@@ -23,7 +23,16 @@ export default function Home() {
           </p>
         </div>
 
-        {/* Social Links */}
+                {/* About Button */}
+        <div className="text-center mb-8">
+          <Link
+            href="/about"
+            className="text-blue-600 hover:underline text-sm font-medium"
+          >
+            👋 Read my full story →
+          </Link>
+        </div>
+{/* Social Links */}
         <div className="flex justify-center gap-4 mb-12">
           {/* Instagram */}
           <a
