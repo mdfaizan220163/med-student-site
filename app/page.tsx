@@ -23,7 +23,16 @@ export default function Home() {
           </p>
         </div>
 
-                {/* About Button */}
+                        {/* Russia Guide Button */}
+        <div className="text-center mb-8">
+          <Link
+            href="/russia"
+            className="inline-block px-6 py-3 bg-red-50 text-red-700 border-2 border-red-200 rounded-lg hover:bg-red-100 transition-colors text-sm font-semibold"
+          >
+            ⚠️ Read: The Truth About Studying Medicine in Russia
+          </Link>
+        </div>
+{/* About Button */}
         <div className="text-center mb-8">
           <Link
             href="/about"
