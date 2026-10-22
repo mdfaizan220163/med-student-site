@@ -35,7 +35,7 @@ export default function RootLayout({ children }: { children: React.ReactNode }) 
         </header>
         <main className="max-w-6xl mx-auto px-6 py-8">{children}</main>
         <footer className="border-t mt-20 py-10 text-sm text-gray-500 max-w-6xl mx-auto px-6">
-          <p>Content for educational purposes only and not medical advice. © {new Date().getFullYear()} M D Faizan</p>
+          <p>Content for educational purposes only and not medical advice.  M D Faizan</p>
           <div className="flex gap-4 mt-2">
             <a href="/privacy">Privacy</a>
             <a href="/contact">Contact</a>
