@@ -1,66 +1,46 @@
+import "./globals.css";
+import { Inter } from "next/font/google";
 import Link from "next/link";
-import { posts } from "../../../lib/posts";
-import { notFound } from "next/navigation";
-import AdSlot from "../../../components/AdSlot";
-import type { Metadata } from "next";
 
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
-  const resolvedParams = await params;
-  const post = posts.find((p) => p.slug === resolvedParams.slug);
-  
-  if (!post) return { title: "Post Not Found" };
+const inter = Inter({ subsets: ["latin"] });
 
-  return {
-    title: `${post.title} | M D Faizan`,
-    description: post.excerpt,
-  };
-}
+export const metadata = {
+  title: "M D Faizan | 3rd Year Medical Student - Clinical Pearls & Study Tips",
+  description: "Sharing my journey through medical school in Russia — from research papers and clinical insights to daily study vlogs and tips for med students.",
+};
 
-export default async function BlogPost({ params }: { params: Promise<{ slug: string }> }) {
-  const resolvedParams = await params;
-  const post = posts.find((p) => p.slug === resolvedParams.slug);
-
-  if (!post) {
-    notFound();
-  }
-
-  const postData = post as any;
-
+export default function RootLayout({
+  children,
+}: {
+  children: React.ReactNode;
+}) {
   return (
-    <main className="max-w-3xl mx-auto px-4 py-12">
-      <Link href="/blog" className="text-blue-600 hover:underline mb-8 inline-block">
-        ← Back to Blog
-      </Link>
-      
-      <div className="mb-8">
-        <p className="text-sm text-blue-600 font-medium mb-2">
-          {postData.category || "Blog"} • {postData.readTime || "5 min"}
-        </p>
-        <h1 className="text-4xl font-bold mb-4">{postData.title}</h1>
-        <p className="text-lg text-gray-600">{postData.excerpt}</p>
-      </div>
+    <html lang="en">
+      <body className={inter.className}>
+        <header className="border-b border-gray-200">
+          <div className="max-w-4xl mx-auto px-4 py-4 flex justify-between items-center">
+            <Link href="/" className="font-bold text-xl text-gray-900 hover:text-blue-600">
+              Dr Faizan
+            </Link>
+            <nav className="flex gap-4 text-sm font-medium text-gray-600">
+              <Link href="/blog" className="hover:text-black">Blog</Link>
+              <Link href="/about" className="hover:text-black">About</Link>
+              <Link href="/faizan" className="hover:text-black">Research</Link>
+              <Link href="/contact" className="hover:text-black">Contact</Link>
+            </nav>
+          </div>
+        </header>
 
-      <AdSlot />
+        {children}
 
-      <div className="prose prose-lg max-w-none mt-8">
-        <p>{postData.content || "Content coming soon..."}</p>
-        
-        {postData.slug === "truth-about-medicine-in-russia" && (
-          <Link href="/russia" className="inline-block mt-6 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 font-bold">
-            Read the Full Detailed Guide Here →
-          </Link>
-        )}
-      </div>
-
-      <div className="mt-12 pt-8 border-t border-gray-200">
-        <h3 className="text-xl font-bold mb-4">Connect with me</h3>
-        <div className="flex flex-wrap gap-4">
-          <a href="https://instagram.com/flar.orc.067" target="_blank" className="bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 transition">Instagram</a>
-          <a href="https://youtube.com/@medicosfaizan?si=bUrktJ4yKUKwUt70" target="_blank" className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition">YouTube</a>
-          <a href="https://linkedin.com/in/md-faizan-b285442a8" target="_blank" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">LinkedIn</a>
-          <a href="/contact" className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-900 transition">Contact Page</a>
-        </div>
-      </div>
-    </main>
+        <footer className="border-t mt-20 py-10 text-sm text-gray-500 max-w-4xl mx-auto px-6">
+          <p>Content for educational purposes only and not medical advice. © 2026 M D Faizan</p>
+          <div className="flex gap-4 mt-2">
+            <Link href="/privacy" className="hover:underline">Privacy</Link>
+            <Link href="/contact" className="hover:underline">Contact</Link>
+          </div>
+        </footer>
+      </body>
+    </html>
   );
 }
