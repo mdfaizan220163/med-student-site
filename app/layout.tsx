@@ -1,47 +1,66 @@
+import Link from "next/link";
+import { posts } from "../../../lib/posts";
+import { notFound } from "next/navigation";
+import AdSlot from "../../../components/AdSlot";
+import type { Metadata } from "next";
 
-import "./globals.css";
-import { Inter } from "next/font/google";
+export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+  const resolvedParams = await params;
+  const post = posts.find((p) => p.slug === resolvedParams.slug);
+  
+  if (!post) return { title: "Post Not Found" };
 
-const inter = Inter({ subsets: ["latin"] });
+  return {
+    title: `${post.title} | M D Faizan`,
+    description: post.excerpt,
+  };
+}
 
-export const metadata = {
-  title: "M D Faizan | Medical Student, Researcher",
-  description: "3rd year medical student sharing clinical pearls, research breakdowns, and study strategies. Educational content only.",
-  openGraph: {
-    title: "M D Faizan",
-    description: "Medical student journey - clinical pearls and research simplified",
-    type: "website",
+export default async function BlogPost({ params }: { params: Promise<{ slug: string }> }) {
+  const resolvedParams = await params;
+  const post = posts.find((p) => p.slug === resolvedParams.slug);
+
+  if (!post) {
+    notFound();
   }
-};
 
-export default function RootLayout({ children }: { children: React.ReactNode }) {
+  const postData = post as any;
+
   return (
-    <html lang="en">
-      <head>
-        {/* PASTE YOUR ADSENSE ID HERE AFTER APPROVAL */}
-        {/* <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-XXXXXXXX" crossOrigin="anonymous"></script> */}
-      </head>
-      <body className={inter.className}>
-        <header className="sticky top-0 bg-white/80 backdrop-blur border-b z-50">
-          <div className="max-w-6xl mx-auto px-6 py-4 flex justify-between">
-            <a href="/" className="font-bold text-lg">Dr Faizan</a>
-            <nav className="flex gap-6 text-sm">
-              <a href="/blog">Blog</a>
-              <a href="/about">About</a>
-              <a href="/research">Research</a>
-              <a href="/contact">Contact</a>
-            </nav>
-          </div>
-        </header>
-        <main className="max-w-6xl mx-auto px-6 py-8">{children}</main>
-        <footer className="border-t mt-20 py-10 text-sm text-gray-500 max-w-6xl mx-auto px-6">
-          <p>Content for educational purposes only and not medical advice.  M D Faizan</p>
-          <div className="flex gap-4 mt-2">
-            <a href="/privacy">Privacy</a>
-            <a href="/contact">Contact</a>
-          </div>
-        </footer>
-      </body>
-    </html>
+    <main className="max-w-3xl mx-auto px-4 py-12">
+      <Link href="/blog" className="text-blue-600 hover:underline mb-8 inline-block">
+        ← Back to Blog
+      </Link>
+      
+      <div className="mb-8">
+        <p className="text-sm text-blue-600 font-medium mb-2">
+          {postData.category || "Blog"} • {postData.readTime || "5 min"}
+        </p>
+        <h1 className="text-4xl font-bold mb-4">{postData.title}</h1>
+        <p className="text-lg text-gray-600">{postData.excerpt}</p>
+      </div>
+
+      <AdSlot />
+
+      <div className="prose prose-lg max-w-none mt-8">
+        <p>{postData.content || "Content coming soon..."}</p>
+        
+        {postData.slug === "truth-about-medicine-in-russia" && (
+          <Link href="/russia" className="inline-block mt-6 bg-red-600 text-white px-6 py-3 rounded-lg hover:bg-red-700 font-bold">
+            Read the Full Detailed Guide Here →
+          </Link>
+        )}
+      </div>
+
+      <div className="mt-12 pt-8 border-t border-gray-200">
+        <h3 className="text-xl font-bold mb-4">Connect with me</h3>
+        <div className="flex flex-wrap gap-4">
+          <a href="https://instagram.com/flar.orc.067" target="_blank" className="bg-pink-600 text-white px-4 py-2 rounded-lg hover:bg-pink-700 transition">Instagram</a>
+          <a href="https://youtube.com/@medicosfaizan?si=bUrktJ4yKUKwUt70" target="_blank" className="bg-red-600 text-white px-4 py-2 rounded-lg hover:bg-red-700 transition">YouTube</a>
+          <a href="https://linkedin.com/in/md-faizan-b285442a8" target="_blank" className="bg-blue-600 text-white px-4 py-2 rounded-lg hover:bg-blue-700 transition">LinkedIn</a>
+          <a href="/contact" className="bg-gray-800 text-white px-4 py-2 rounded-lg hover:bg-gray-900 transition">Contact Page</a>
+        </div>
+      </div>
+    </main>
   );
 }
