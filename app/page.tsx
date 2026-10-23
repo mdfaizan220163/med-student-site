@@ -36,7 +36,7 @@ export default function Home() {
 
       {/* Ad Slot */}
       <div className="my-12">
-        <AdSlot type="top" />
+      
       </div>
 
       {/* Latest Posts Section */}
