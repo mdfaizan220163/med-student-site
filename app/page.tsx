@@ -1,37 +1,65 @@
-
-import { posts } from "@/lib/posts";
-import AdSlot from "@/components/AdSlot";
+import Link from "next/link";
+import { posts } from "../lib/posts";
+import AdSlot from "../components/AdSlot";
 
 export default function Home() {
   return (
-    <div>
-      <section className="py-16">
-        <p className="text-4xl">🩺</p>
-        <h1 className="text-4xl font-bold mt-4">M D Faizan</h1>
-        <p className="text-gray-600 mt-2 text-lg">Medical Student · Researcher · Content Creator</p>
-        <p className="mt-4 max-w-2xl text-gray-700">Sharing my journey through medical school — from research papers and clinical insights to daily study vlogs.</p>
-        <div className="flex gap-3 mt-6">
-          <a href="/blog" className="bg-black text-white px-5 py-2.5 rounded-full text-sm">Read Blog</a>
-          <a href="/about" className="border px-5 py-2.5 rounded-full text-sm">My Story →</a>
+    <main className="max-w-4xl mx-auto px-4 py-12">
+      {/* Hero Section */}
+      <div className="flex flex-col items-center text-center space-y-4">
+        <span className="text-5xl">🩺</span>
+        <h1 className="text-4xl font-bold tracking-tight text-gray-900 dark:text-white">
+          M D Faizan
+        </h1>
+        <p className="text-lg text-blue-600 dark:text-blue-400 font-medium">
+          Medical Student · Researcher · Content Creator
+        </p>
+        <p className="max-w-2xl text-gray-600 dark:text-gray-400">
+          Sharing my journey through medical school — from research papers and clinical insights to daily study vlogs.
+        </p>
+        
+        <div className="flex gap-4 pt-4">
+          <Link 
+            href="/blog" 
+            className="bg-black text-white px-6 py-2 rounded-full font-medium hover:bg-gray-800 transition"
+          >
+            Read Blog
+          </Link>
+          <Link 
+            href="/about" 
+            className="border border-gray-300 px-6 py-2 rounded-full font-medium hover:bg-gray-50 transition"
+          >
+            My Story →
+          </Link>
         </div>
-      </section>
+      </div>
 
-      <AdSlot label="Homepage Top Banner" />
+      {/* Ad Slot */}
+      <div className="my-12">
+        <AdSlot type="top" />
+      </div>
 
-      <section>
-        <h2 className="font-semibold text-xl mb-4">📖 Latest Posts</h2>
-        <div className="grid md:grid-cols-2 gap-4">
-          {posts.map(p => (
-            <a key={p.slug} href={`/blog/${p.slug}`} className="border rounded-xl p-5 hover:shadow">
-              <p className="text-xs text-blue-600">{p.category} • {p.readTime}</p>
-              <h3 className="font-semibold mt-2">{p.title}</h3>
-              <p className="text-sm text-gray-600 mt-1">{p.excerpt}</p>
-            </a>
+      {/* Latest Posts Section */}
+      <div className="mt-16">
+        <h2 className="text-2xl font-bold mb-6 flex items-center gap-2">
+          <span>📚</span> Latest Posts
+        </h2>
+        <div className="grid gap-6">
+          {posts.map((post) => (
+            <Link 
+              key={post.slug} 
+              href={`/blog/${post.slug}`}
+              className="block p-6 border border-gray-200 rounded-xl hover:border-blue-500 transition"
+            >
+              <p className="text-sm text-blue-600 font-medium mb-2">
+                {post.category} • {post.readTime}
+              </p>
+              <h3 className="text-xl font-semibold mb-2">{post.title}</h3>
+              <p className="text-gray-600 text-sm">{post.excerpt}</p>
+            </Link>
           ))}
         </div>
-      </section>
-
-      <AdSlot label="Homepage In-Feed" />
-    </div>
+      </div>
+    </main>
   );
 }
