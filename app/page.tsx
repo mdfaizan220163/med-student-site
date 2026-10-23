@@ -52,7 +52,7 @@ export default function Home() {
               className="block p-6 border border-gray-200 rounded-xl hover:border-blue-500 transition"
             >
               <p className="text-sm text-blue-600 font-medium mb-2">
-                {post.lebel} • {post.readTime}
+                {post.category || "Blog Post"} • {post.readTime}
               </p>
               <h3 className="text-xl font-semibold mb-2">{post.title}</h3>
               <p className="text-gray-600 text-sm">{post.excerpt}</p>

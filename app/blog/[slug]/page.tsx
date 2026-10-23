@@ -20,7 +20,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
       <div className="mb-8">
         <p className="text-sm text-blue-600 font-medium mb-2">
           {/* Changed to 'label' to match your lib/posts.ts */}
-          {post.label} • {post.readTime}
+          {post.category || "Blog Post"} • {post.readTime}
         </p>
         <h1 className="text-4xl font-bold mb-4">{post.title}</h1>
         <p className="text-lg text-gray-600">{post.excerpt}</p>
