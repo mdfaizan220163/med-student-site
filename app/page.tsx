@@ -18,12 +18,18 @@ export default function Home() {
           Sharing my journey through medical school — from research papers and clinical insights to daily study vlogs.
         </p>
         
-        <div className="flex gap-4 pt-4">
+        <div className="flex flex-wrap justify-center gap-4 pt-4">
           <Link 
             href="/blog" 
             className="bg-black text-white px-6 py-2 rounded-full font-medium hover:bg-gray-800 transition"
           >
             Read Blog
+          </Link>
+          <Link 
+            href="/russia" 
+            className="bg-red-600 text-white px-6 py-2 rounded-full font-medium hover:bg-red-700 transition shadow-lg shadow-red-200"
+          >
+            ⚠️ The Truth About Russia
           </Link>
           <Link 
             href="/about" 
@@ -36,7 +42,7 @@ export default function Home() {
 
       {/* Ad Slot */}
       <div className="my-12">
-      
+        <AdSlot />
       </div>
 
       {/* Latest Posts Section */}
@@ -45,19 +51,26 @@ export default function Home() {
           <span>📚</span> Latest Posts
         </h2>
         <div className="grid gap-6">
-          {posts.map((post) => (
-            <Link 
-              key={post.slug} 
-              href={`/blog/${post.slug}`}
-              className="block p-6 border border-gray-200 rounded-xl hover:border-blue-500 transition"
-            >
-              <p className="text-sm text-blue-600 font-medium mb-2">
-                {post.category || "Blog Post"} • {post.readTime}
-              </p>
-              <h3 className="text-xl font-semibold mb-2">{post.title}</h3>
-              <p className="text-gray-600 text-sm">{post.excerpt}</p>
-            </Link>
-          ))}
+          {posts.map((post) => {
+            // THIS IS THE MAGIC LINE: It sends Russia to /russia, others to /blog
+            const postLink = post.slug === "truth-about-medicine-in-russia" 
+              ? "/russia" 
+              : `/blog/${post.slug}`;
+
+            return (
+              <Link 
+                key={post.slug} 
+                href={postLink}
+                className="block p-6 border border-gray-200 rounded-xl hover:border-blue-500 transition"
+              >
+                <p className="text-sm text-blue-600 font-medium mb-2">
+                  {post.category} • {post.readTime}
+                </p>
+                <h3 className="text-xl font-semibold mb-2">{post.title}</h3>
+                <p className="text-gray-600 text-sm">{post.excerpt}</p>
+              </Link>
+            );
+          })}
         </div>
       </div>
     </main>
