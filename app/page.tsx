@@ -45,7 +45,6 @@ export default function Home() {
 
         {/* Social Links */}
         <div className="flex justify-center gap-4 mb-12">
-          {/* Instagram */}
           <a
             href="https://instagram.com/flar.orc.067"
             target="_blank"
@@ -59,8 +58,6 @@ export default function Home() {
               <line x1="17.5" y1="6.5" x2="17.51" y2="6.5"></line>
             </svg>
           </a>
-
-          {/* YouTube */}
           <a
             href="https://youtube.com/@medicosfaizan"
             target="_blank"
@@ -72,8 +69,6 @@ export default function Home() {
               <path d="M23.498 6.186a3.016 3.016 0 0 0-2.122-2.136C19.505 3.545 12 3.545 12 3.545s-7.505 0-9.377.505A3.017 3.017 0 0 0 .502 6.186C0 8.07 0 12 0 12s0 3.93.502 5.814a3.016 3.016 0 0 0 2.122 2.136c1.871.505 9.376.505 9.376.505s7.505 0 9.377-.505a3.015 3.015 0 0 0 2.122-2.136C24 15.93 24 12 24 12s0-3.93-.502-5.814zM9.545 15.568V8.432L15.818 12l-6.273 3.568z"/>
             </svg>
           </a>
-
-          {/* LinkedIn */}
           <a
             href="https://www.linkedin.com/in/md-faizan-b285442a8"
             target="_blank"
@@ -90,9 +85,9 @@ export default function Home() {
         {/* Main Buttons */}
         <div className="flex flex-col sm:flex-row gap-4 justify-center mb-16">
           
-          {/* NEW ANATOMY BUTTON */}
+          {/* Anatomy Button - EXACT FILE NAME */}
           <a
-            href="/anatomy/clavicle-and-scapula.html"
+            href="/anatomy/clavicle-scapula.html"
             target="_blank"
             className="px-8 py-4 bg-green-600 text-white rounded-lg font-semibold text-center hover:bg-green-700 transition-colors shadow-md"
           >
