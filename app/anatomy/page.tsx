@@ -56,4 +56,4 @@ export default function AnatomyPage() {
       </div>
     </div>
   );
-}
+} 
