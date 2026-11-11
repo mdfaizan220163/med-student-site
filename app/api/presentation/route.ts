@@ -72,11 +72,9 @@ Create exactly ${slideCount} slides. Include learning objectives, core mechanism
     pptx.subject = topic;
     pptx.title = clean(content.title, topic);
     pptx.company = "Faizan AI";
-    pptx.lang = language;
     pptx.theme = {
       headFontFace: "Aptos Display",
       bodyFontFace: "Aptos",
-      lang: "en-US"
     };
     const navy = "102B4E";
     const blue = "2E6F9E";
@@ -103,7 +101,7 @@ Create exactly ${slideCount} slides. Include learning objectives, core mechanism
       const bullets = Array.isArray(item.bullets) ? item.bullets.slice(0, 6) : [];
       if (bullets.length) {
         slide.addText(bullets.map((b) => ({ text: clean(b), options: { bullet: { indent: 16 }, hanging: 4, breakLine: true } })), {
-          x: 0.9, y: 1.65, w: 11.4, h: 4.55, fontFace: "Aptos", fontSize: 19, color: "263849", paraSpaceAfterPt: 15, breakLine: false, valign: "mid", fit: "shrink", margin: 0.08
+          x: 0.9, y: 1.65, w: 11.4, h: 4.55, fontFace: "Aptos", fontSize: 19, color: "263849", paraSpaceAfterPt: 15, breakLine: false, fit: "shrink", margin: 0.08
         });
       }
       if (item.visual) {
@@ -126,7 +124,7 @@ Create exactly ${slideCount} slides. Include learning objectives, core mechanism
       ];
       uploaded.slice(0, 4).forEach((img, idx) => {
         const pos = positions[idx];
-        slide.addImage({ data: `data:${img.type};base64,${img.data}`, ...pos, sizing: "contain" as never });
+        slide.addImage({ data: `data:${img.type};base64,${img.data}`, ...pos });
         slide.addText(img.name.slice(0, 55), { x: pos.x, y: pos.y + pos.h + 0.05, w: pos.w, h: 0.22, fontSize: 8, color: "60788D", fit: "shrink" });
       });
       addWatermark(slide);
@@ -134,7 +132,8 @@ Create exactly ${slideCount} slides. Include learning objectives, core mechanism
 
     const output = await pptx.write({ outputType: "nodebuffer" });
     const buffer = Buffer.isBuffer(output) ? output : Buffer.from(output as ArrayBuffer);
-    return new NextResponse(buffer, {
+    const arrayBuffer = buffer.buffer.slice(buffer.byteOffset, buffer.byteOffset + buffer.byteLength) as ArrayBuffer;
+    return new NextResponse(arrayBuffer, {
       status: 200,
       headers: {
         "Content-Type": "application/vnd.openxmlformats-officedocument.presentationml.presentation",
