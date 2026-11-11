@@ -1,58 +1,18 @@
 import Link from "next/link";
-
 const sections = [
   { n: "01", title: "Anatomy", tag: "Study resources", text: "Structured notes, visual learning, and revision resources for understanding the human body.", href: "/anatomy", icon: "✳" },
   { n: "02", title: "Research", tag: "Explore ideas", text: "Medical research, projects, scientific curiosity, and evidence-based learning.", href: "/faizan", icon: "⌘" },
   { n: "03", title: "Russia guide", tag: "Student life", text: "Practical guidance and experiences from studying medicine in Kaliningrad.", href: "/russia", icon: "↗" },
   { n: "04", title: "Vlogs & stories", tag: "Behind the journey", text: "Follow the everyday experiences, lessons, and milestones of medical school.", href: "/vlogs", icon: "▶" },
 ];
-
 export default function Home() {
-  return (
-    <main>
-      <section className="hero wrap">
-        <div className="hero-copy">
-          <div className="eyebrow"><span className="dot" /> MEDICINE · LEARNING · CURIOSITY</div>
-          <h1>Learning medicine.<br /><span>Sharing the journey.</span></h1>
-          <p className="hero-lead">A space for medical notes, useful resources, research, and the real experience of becoming a doctor — one day at a time.</p>
-          <div className="hero-actions">
-            <Link href="/anatomy" className="btn btn-primary">Explore study hub <span>↗</span></Link>
-            <Link href="/about" className="btn btn-outline">Meet Faizan</Link>
-          </div>
-          <div className="hero-caption"><span /> MBBS student · IKBFU, Kaliningrad</div>
-        </div>
-        <div className="hero-visual" aria-label="Medical learning artwork">
-          <div className="orbit orbit-a" /><div className="orbit orbit-b" />
-          <div className="visual-plus">+</div><div className="visual-star">✦</div>
-          <div className="visual-core"><div className="core-ring">✳</div><small>MEDICAL<br />KNOWLEDGE</small></div>
-          <div className="float-card float-top"><small>THE STUDY MINDSET</small><strong>Curiosity<br />meets science.</strong><span>Keep asking better questions.</span></div>
-          <div className="float-card float-bottom"><b>⌁</b><div><strong>Learn with purpose</strong><span>Understand · Apply · Grow</span></div></div>
-        </div>
-      </section>
-
-      <section className="statement"><div className="wrap statement-inner"><strong>Medicine is more than memorizing facts.</strong><span>It is about understanding the human body, thinking critically, and never stopping learning.</span></div></section>
-
-      <section className="wrap study" id="study-hub">
-        <div className="section-head"><div><div className="eyebrow">YOUR LEARNING SPACE</div><h2>Explore the <span>study hub.</span></h2></div><p>Notes, experiences, and resources designed to make the medical journey a little clearer.</p></div>
-        <div className="study-grid">
-          {sections.map((item) => <Link href={item.href} className="study-card" key={item.n}>
-            <div className="card-top"><span>{item.n}</span><b>{item.icon}</b></div>
-            <small className="card-tag">{item.tag}</small><h3>{item.title}</h3><p>{item.text}</p>
-            <div className="card-foot">Explore section <span>↗</span></div>
-          </Link>)}
-        </div>
-      </section>
-
-      <section className="ai-band"><div className="wrap ai-inner">
-        <div className="ai-copy"><div className="eyebrow light"><span className="dot" /> IN DEVELOPMENT</div><h2>Meet your future<br /><span>Medical AI Studio.</span></h2>
-          <p>A smarter study companion to turn medical topics into clear explanations, structured notes, presentation outlines, and visual learning materials.</p>
-          <Link href="/ai-studio" className="btn btn-white">Open Medical AI Studio <span>↗</span></Link>
-        </div>
-        <div className="ai-window"><div className="window-head"><i /> MEDICAL AI STUDIO <span>•••</span></div><h3>What would you like to study today?</h3><div className="fake-prompt">Explain the cardiac cycle step by step…</div><div className="tool-chips"><span>✧ Explain a topic</span><span>▤ Create notes</span><span>▧ Plan slides</span></div><small>For education · Not a substitute for clinical judgment</small></div>
-      </div></section>
-
-      <section className="wrap about"><div className="monogram">MF<span>.</span></div><div><div className="eyebrow">A LITTLE ABOUT ME</div><h2>Hi, I’m Faizan.</h2><p>I’m a medical student documenting what I learn, the questions I explore, and the experiences that shape my path in medicine. This website is my growing notebook — and a place to connect with fellow learners.</p><Link href="/about" className="inline-link">More about my journey ↗</Link></div></section>
-      <section className="contact-band"><div className="wrap contact-inner"><div><div className="eyebrow">LET’S CONNECT</div><h2>Curious minds learn better together.</h2></div><Link href="/contact" className="btn btn-primary">Get in touch <span>↗</span></Link></div></section>
-    </main>
-  );
+ return <main>
+  <section className="hero wrap"><div className="hero-copy"><div className="eyebrow"><span className="dot" /> MEDICINE · LEARNING · CURIOSITY</div><h1>Learning medicine.<br /><span>Sharing the journey.</span></h1><p className="hero-lead">A space for medical notes, useful resources, research, and the real experience of becoming a doctor — one day at a time.</p><div className="hero-actions"><Link href="/anatomy" className="btn btn-primary">Explore study hub <span>↗</span></Link><Link href="/about" className="btn btn-outline">Meet Faizan</Link></div><div className="hero-caption"><span /> MBBS student · IKBFU, Kaliningrad</div></div>
+   <div className="hero-visual" aria-label="Medical learning artwork"><div className="orbit orbit-a" /><div className="orbit orbit-b" /><div className="visual-plus">+</div><div className="visual-star">✦</div><div className="visual-core"><div className="core-ring">✳</div><small>MEDICAL<br />KNOWLEDGE</small></div><div className="float-card float-top"><small>THE STUDY MINDSET</small><strong>Curiosity<br />meets science.</strong><span>Keep asking better questions.</span></div><div className="float-card float-bottom"><b>⌁</b><div><strong>Learn with purpose</strong><span>Understand · Apply · Grow</span></div></div></div></section>
+  <section className="statement"><div className="wrap statement-inner"><strong>Medicine is more than memorizing facts.</strong><span>It is about understanding the human body, thinking critically, and never stopping learning.</span></div></section>
+  <section className="wrap study" id="study-hub"><div className="section-head"><div><div className="eyebrow">YOUR LEARNING SPACE</div><h2>Explore the <span>study hub.</span></h2></div><p>Notes, experiences, and resources designed to make the medical journey a little clearer.</p></div><div className="study-grid">{sections.map((item) => <Link href={item.href} className="study-card" key={item.n}><div className="card-top"><span>{item.n}</span><b>{item.icon}</b></div><small className="card-tag">{item.tag}</small><h3>{item.title}</h3><p>{item.text}</p><div className="card-foot">Explore section <span>↗</span></div></Link>)}</div></section>
+  <section className="ai-band"><div className="wrap ai-inner"><div className="ai-copy"><div className="eyebrow light"><span className="dot" /> STUDY WITH AI</div><h2>Meet <span>Faizan AI.</span></h2><p>Your medical study companion for clear explanations, revision, visual learning, and presentation planning.</p><div className="hero-actions"><Link href="/ai-studio" className="btn btn-white">Open Faizan AI <span>↗</span></Link><Link href="/presentation-studio" className="btn btn-outline">Make a presentation <span>↗</span></Link></div></div><div className="ai-window"><div className="window-head"><i /> FAIZAN AI <span>•••</span></div><h3>What would you like to study today?</h3><div className="fake-prompt">Explain the cardiac cycle step by step…</div><div className="tool-chips"><span>✧ Explain a topic</span><span>▤ Create notes</span><span>▧ Plan slides</span></div><small>For education · Not a substitute for clinical judgment</small></div></div></section>
+  <section className="wrap about"><div className="monogram">MF<span>.</span></div><div><div className="eyebrow">A LITTLE ABOUT ME</div><h2>Hi, I’m Faizan.</h2><p>I’m a medical student documenting what I learn, the questions I explore, and the experiences that shape my path in medicine. This website is my growing notebook — and a place to connect with fellow learners.</p><Link href="/about" className="inline-link">More about my journey ↗</Link></div></section>
+  <section className="contact-band"><div className="wrap contact-inner"><div><div className="eyebrow">LET’S CONNECT</div><h2>Curious minds learn better together.</h2></div><Link href="/contact" className="btn btn-primary">Get in touch <span>↗</span></Link></div></section>
+ </main>;
 }
