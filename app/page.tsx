@@ -1,81 +1,58 @@
-import Link from 'next/link';
+import Link from "next/link";
+
+const sections = [
+  { n: "01", title: "Anatomy", tag: "Study resources", text: "Structured notes, visual learning, and revision resources for understanding the human body.", href: "/anatomy", icon: "✳" },
+  { n: "02", title: "Research", tag: "Explore ideas", text: "Medical research, projects, scientific curiosity, and evidence-based learning.", href: "/faizan", icon: "⌘" },
+  { n: "03", title: "Russia guide", tag: "Student life", text: "Practical guidance and experiences from studying medicine in Kaliningrad.", href: "/russia", icon: "↗" },
+  { n: "04", title: "Vlogs & stories", tag: "Behind the journey", text: "Follow the everyday experiences, lessons, and milestones of medical school.", href: "/vlogs", icon: "▶" },
+];
 
 export default function Home() {
   return (
-    <div className="min-h-screen bg-gradient-to-br from-blue-50 to-indigo-100 flex flex-col items-center justify-center p-6 text-gray-800">
-      
-      <main className="max-w-3xl w-full bg-white rounded-2xl shadow-xl overflow-hidden p-8 md:p-12">
-        
-        {/* Header Section */}
-        <div className="text-center mb-10">
-          <h1 className="text-4xl md:text-5xl font-extrabold text-blue-900 mb-4 tracking-tight flex items-center justify-center gap-3">
-            <span>🩺</span> MD Faizan
-          </h1>
-          <p className="text-lg text-gray-600 mb-2">
-            3rd-year MBBS Student at IKBFU Kaliningrad
-          </p>
-          <p className="text-md text-gray-500">
-            Welcome to my study notes, research, and portfolio.
-          </p>
-        </div>
-
-        {/* Buttons Grid */}
-        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-10">
-          
-          <Link href="/anatomy" className="group block p-6 bg-blue-50 border border-blue-100 rounded-xl hover:bg-blue-600 hover:text-white transition-all duration-300 shadow-sm hover:shadow-md">
-            <h2 className="text-xl font-bold mb-2 text-blue-800 group-hover:text-white flex items-center gap-2">
-              <span>🦴</span> Anatomy Notes
-            </h2>
-            <p className="text-sm text-gray-600 group-hover:text-blue-100">Access my curated anatomy study materials.</p>
-          </Link>
-
-          <Link href="/faizan" className="group block p-6 bg-green-50 border border-green-100 rounded-xl hover:bg-green-600 hover:text-white transition-all duration-300 shadow-sm hover:shadow-md">
-            <h2 className="text-xl font-bold mb-2 text-green-800 group-hover:text-white flex items-center gap-2">
-              <span>🔬</span> Research
-            </h2>
-            <p className="text-sm text-gray-600 group-hover:text-green-100">Explore my medical research and projects.</p>
-          </Link>
-
-          <Link href="/vlogs" className="group block p-6 bg-red-50 border border-red-100 rounded-xl hover:bg-red-600 hover:text-white transition-all duration-300 shadow-sm hover:shadow-md">
-            <h2 className="text-xl font-bold mb-2 text-red-800 group-hover:text-white flex items-center gap-2">
-              <span>🎥</span> Vlogs
-            </h2>
-            <p className="text-sm text-gray-600 group-hover:text-red-100">Watch my journey as a medical student in Russia.</p>
-          </Link>
-
-          <Link href="/russia" className="group block p-6 bg-purple-50 border border-purple-100 rounded-xl hover:bg-purple-600 hover:text-white transition-all duration-300 shadow-sm hover:shadow-md">
-            <h2 className="text-xl font-bold mb-2 text-purple-800 group-hover:text-white flex items-center gap-2">
-              <span>🇷🇺</span> Russia Guide
-            </h2>
-            <p className="text-sm text-gray-600 group-hover:text-purple-100">Tips for studying and living in Russia.</p>
-          </Link>
-
-          <Link href="/about" className="group block p-6 bg-gray-50 border border-gray-200 rounded-xl hover:bg-gray-800 hover:text-white transition-all duration-300 shadow-sm hover:shadow-md sm:col-span-2">
-            <h2 className="text-xl font-bold mb-2 text-gray-800 group-hover:text-white flex items-center gap-2">
-              <span>👨‍⚕️</span> About Me
-            </h2>
-            <p className="text-sm text-gray-600 group-hover:text-gray-300">Learn more about my background and goals.</p>
-          </Link>
-
-        </div>
-
-        {/* Social Links Section */}
-        <div className="border-t border-gray-200 pt-8 mt-4 text-center">
-          <p className="text-sm text-gray-500 mb-4 uppercase tracking-wider font-semibold">Connect with me</p>
-          <div className="flex justify-center space-x-6">
-            <a href="https://instagram.com/flar.orc.067" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-pink-600 transition-colors flex items-center gap-1">
-              📸 Instagram
-            </a>
-            <a href="https://youtube.com/@medicosfaizan" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-red-600 transition-colors flex items-center gap-1">
-              ▶️ YouTube
-            </a>
-            <a href="https://linkedin.com/in/md-faizan-b285442a8" target="_blank" rel="noopener noreferrer" className="text-gray-500 hover:text-blue-700 transition-colors flex items-center gap-1">
-              💼 LinkedIn
-            </a>
+    <main>
+      <section className="hero wrap">
+        <div className="hero-copy">
+          <div className="eyebrow"><span className="dot" /> MEDICINE · LEARNING · CURIOSITY</div>
+          <h1>Learning medicine.<br /><span>Sharing the journey.</span></h1>
+          <p className="hero-lead">A space for medical notes, useful resources, research, and the real experience of becoming a doctor — one day at a time.</p>
+          <div className="hero-actions">
+            <Link href="/anatomy" className="btn btn-primary">Explore study hub <span>↗</span></Link>
+            <Link href="/about" className="btn btn-outline">Meet Faizan</Link>
           </div>
+          <div className="hero-caption"><span /> MBBS student · IKBFU, Kaliningrad</div>
         </div>
+        <div className="hero-visual" aria-label="Medical learning artwork">
+          <div className="orbit orbit-a" /><div className="orbit orbit-b" />
+          <div className="visual-plus">+</div><div className="visual-star">✦</div>
+          <div className="visual-core"><div className="core-ring">✳</div><small>MEDICAL<br />KNOWLEDGE</small></div>
+          <div className="float-card float-top"><small>THE STUDY MINDSET</small><strong>Curiosity<br />meets science.</strong><span>Keep asking better questions.</span></div>
+          <div className="float-card float-bottom"><b>⌁</b><div><strong>Learn with purpose</strong><span>Understand · Apply · Grow</span></div></div>
+        </div>
+      </section>
 
-      </main>
-    </div>
+      <section className="statement"><div className="wrap statement-inner"><strong>Medicine is more than memorizing facts.</strong><span>It is about understanding the human body, thinking critically, and never stopping learning.</span></div></section>
+
+      <section className="wrap study" id="study-hub">
+        <div className="section-head"><div><div className="eyebrow">YOUR LEARNING SPACE</div><h2>Explore the <span>study hub.</span></h2></div><p>Notes, experiences, and resources designed to make the medical journey a little clearer.</p></div>
+        <div className="study-grid">
+          {sections.map((item) => <Link href={item.href} className="study-card" key={item.n}>
+            <div className="card-top"><span>{item.n}</span><b>{item.icon}</b></div>
+            <small className="card-tag">{item.tag}</small><h3>{item.title}</h3><p>{item.text}</p>
+            <div className="card-foot">Explore section <span>↗</span></div>
+          </Link>)}
+        </div>
+      </section>
+
+      <section className="ai-band"><div className="wrap ai-inner">
+        <div className="ai-copy"><div className="eyebrow light"><span className="dot" /> IN DEVELOPMENT</div><h2>Meet your future<br /><span>Medical AI Studio.</span></h2>
+          <p>A smarter study companion to turn medical topics into clear explanations, structured notes, presentation outlines, and visual learning materials.</p>
+          <Link href="/contact" className="btn btn-white">Follow the project <span>↗</span></Link>
+        </div>
+        <div className="ai-window"><div className="window-head"><i /> MEDICAL AI STUDIO <span>•••</span></div><h3>What would you like to study today?</h3><div className="fake-prompt">Explain the cardiac cycle step by step…</div><div className="tool-chips"><span>✧ Explain a topic</span><span>▤ Create notes</span><span>▧ Plan slides</span></div><small>For education · Not a substitute for clinical judgment</small></div>
+      </div></section>
+
+      <section className="wrap about"><div className="monogram">MF<span>.</span></div><div><div className="eyebrow">A LITTLE ABOUT ME</div><h2>Hi, I’m Faizan.</h2><p>I’m a medical student documenting what I learn, the questions I explore, and the experiences that shape my path in medicine. This website is my growing notebook — and a place to connect with fellow learners.</p><Link href="/about" className="inline-link">More about my journey ↗</Link></div></section>
+      <section className="contact-band"><div className="wrap contact-inner"><div><div className="eyebrow">LET’S CONNECT</div><h2>Curious minds learn better together.</h2></div><Link href="/contact" className="btn btn-primary">Get in touch <span>↗</span></Link></div></section>
+    </main>
   );
 }
