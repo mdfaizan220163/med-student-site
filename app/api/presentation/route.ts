@@ -101,7 +101,7 @@ Create exactly ${slideCount} slides. Include learning objectives, core mechanism
       const bullets = Array.isArray(item.bullets) ? item.bullets.slice(0, 6) : [];
       if (bullets.length) {
         slide.addText(bullets.map((b) => ({ text: clean(b), options: { bullet: { indent: 16 }, hanging: 4, breakLine: true } })), {
-          x: 0.9, y: 1.65, w: 11.4, h: 4.55, fontFace: "Aptos", fontSize: 19, color: "263849", paraSpaceAfterPt: 15, breakLine: false, fit: "shrink", margin: 0.08
+          x: 0.9, y: 1.65, w: 11.4, h: 4.55, fontFace: "Aptos", fontSize: 19, color: "263849", paraSpaceAfter: 15, breakLine: false, fit: "shrink", margin: 0.08
         });
       }
       if (item.visual) {
