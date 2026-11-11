@@ -46,7 +46,7 @@ export default function Home() {
       <section className="ai-band"><div className="wrap ai-inner">
         <div className="ai-copy"><div className="eyebrow light"><span className="dot" /> IN DEVELOPMENT</div><h2>Meet your future<br /><span>Medical AI Studio.</span></h2>
           <p>A smarter study companion to turn medical topics into clear explanations, structured notes, presentation outlines, and visual learning materials.</p>
-          <Link href="/contact" className="btn btn-white">Follow the project <span>↗</span></Link>
+          <Link href="/ai-studio" className="btn btn-white">Open Medical AI Studio <span>↗</span></Link>
         </div>
         <div className="ai-window"><div className="window-head"><i /> MEDICAL AI STUDIO <span>•••</span></div><h3>What would you like to study today?</h3><div className="fake-prompt">Explain the cardiac cycle step by step…</div><div className="tool-chips"><span>✧ Explain a topic</span><span>▤ Create notes</span><span>▧ Plan slides</span></div><small>For education · Not a substitute for clinical judgment</small></div>
       </div></section>
