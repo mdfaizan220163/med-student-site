@@ -40,7 +40,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
         <p className="text-lg text-gray-600">{postData.excerpt}</p>
       </div>
 
-      <AdSlot />
+      <AdSlot label="Blog post" />
 
       <div className="prose prose-lg max-w-none mt-8">
         <p>{postData.content || "Content coming soon..."}</p>
