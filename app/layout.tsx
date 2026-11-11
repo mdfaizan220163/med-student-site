@@ -17,7 +17,7 @@ export default function RootLayout({ children }: Readonly<{ children: React.Reac
           <div className="header-inner">
             <Link href="/" className="brand"><span className="brand-symbol">+</span><span>MD FAIZAN</span></Link>
             <nav className="site-nav" aria-label="Main navigation">
-              <Link href="/anatomy">Study hub</Link><Link href="/blog">Blog</Link><Link href="/faizan">Research</Link><Link href="/russia">Russia guide</Link><Link href="/about">About</Link><Link href="/contact" className="nav-cta">Contact ↗</Link>
+              <Link href="/anatomy">Study hub</Link><Link href="/ai-studio">Medical AI</Link><Link href="/blog">Blog</Link><Link href="/faizan">Research</Link><Link href="/russia">Russia guide</Link><Link href="/about">About</Link><Link href="/contact" className="nav-cta">Contact ↗</Link>
             </nav>
           </div>
         </header>
