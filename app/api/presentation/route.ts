@@ -7,7 +7,7 @@ export const runtime="nodejs";
 export const maxDuration=60;
 
 type Slide={title:string;bullets:string[];visual?:string};
-const clean=(v:unknown,f="")=>typeof v==="string"?v.replace(/[\\u0000-\\u001f]/g," ").trim():f;
+const clean=(v:unknown,f="")=>typeof v==="string"?v.replace(/[\u0000-\u001F]/g," ").trim():f;
 
 export async function POST(req:NextRequest){
  try{
@@ -33,7 +33,7 @@ export async function POST(req:NextRequest){
 
   const prompt=`Create a medically accurate MBBS presentation in ${language} about ${topic}. Return only JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Create exactly ${count} slides, 3-5 concise bullets each. Include objectives, core concepts, clinical relevance, summary and review questions. Never invent citations or guidelines.`;
   const result=await generateWithFallback([{role:"user",content:prompt}],"Create accurate medical education slides. Return valid JSON only.",provider,5000);
-  const raw=result.answer.replace(/^\uFEFF/,"").replace(/^```(?:json)?\\s*/i,"").replace(/\\s*```$/,"");
+  const raw=result.answer.replace(/^\uFEFF/,"").replace(/^```(?:json)?\s*/i,"").replace(/\s*```$/,"");
   const outline=JSON.parse(raw) as {title?:string;subtitle?:string;slides?:Slide[]};
   if(!Array.isArray(outline.slides)||!outline.slides.length)throw Error("AI returned an invalid slide outline.");
 
