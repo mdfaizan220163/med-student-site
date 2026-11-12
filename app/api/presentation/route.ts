@@ -36,13 +36,13 @@ function addAutoDiagram(s:PptxGenJS.Slide,item:Slide,navy:string){
  const points=(Array.isArray(item.bullets)?item.bullets:[]).slice(0,3).map(x=>clean(x).slice(0,78)).filter(Boolean);
  const heading=clean(item.visual,"Key concepts");
  s.addText("KEY CONCEPTS",{x:8.25,y:1.68,w:4.35,h:.3,fontFace:"Arial",fontSize:10,bold:true,color:"477EAA",charSpacing:1.2,fit:"shrink"});
- s.addText(heading.slice(0,120),{x:8.25,y:2.05,w:4.35,h:.75,fontFace:"Arial",fontSize:14,bold:true,color:navy,fit:"shrink",valign:"mid"});
+ s.addText(heading.slice(0,120),{x:8.25,y:2.05,w:4.35,h:.75,fontFace:"Arial",fontSize:14,bold:true,color:navy,fit:"shrink",valign:"middle"});
  points.forEach((p,i)=>{
   const y=3.0+i*1.0;
   s.addShape(PptxGenJS.ShapeType.roundRect,{x:8.25,y,w:4.35,h:.78,rectRadius:.08,line:{color:"D8E5EF",width:1},fill:{color:i===0?"EEF5FA":"F7FAFC"}});
   s.addShape(PptxGenJS.ShapeType.ellipse,{x:8.43,y:y+.22,w:.32,h:.32,line:{color:"477EAA"},fill:{color:"477EAA"}});
   s.addText(String(i+1),{x:8.43,y:y+.245,w:.32,h:.2,fontFace:"Arial",fontSize:9,bold:true,color:"FFFFFF",align:"center",margin:0});
-  s.addText(p,{x:8.9,y:y+.12,w:3.48,h:.55,fontFace:"Arial",fontSize:10,color:"263849",fit:"shrink",valign:"mid",margin:.04});
+  s.addText(p,{x:8.9,y:y+.12,w:3.48,h:.55,fontFace:"Arial",fontSize:10,color:"263849",fit:"shrink",valign:"middle",margin:.04});
  });
 }
 const clean=(v:unknown,f="")=>typeof v==="string"?v.replace(/[\u0000-\u001F]/g," ").trim():f;
@@ -101,12 +101,6 @@ export async function POST(req:NextRequest){
    const terms=[item.title,topic].filter(Boolean).join(" ").slice(0,130);
    visualImages[i]=await fetchOpenImage(terms);
   }));
-  for(let i=0;i<slides.length;i++){
-   if(!visualImages[i]&&aiFallbacks<3&&process.env.OPENAI_API_KEY){
-    visualImages[i]=await generateAiImage([topic,slides[i].title,slides[i].visual||"",...(slides[i].bullets||[]).slice(0,2)].join(". ").slice(0,900));
-    if(visualImages[i])aiFallbacks++;
-   }
-  }
   for(let i=0;i<slides.length;i++){
    const item=slides[i];
    const s=pptx.addSlide();
