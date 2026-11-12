@@ -150,8 +150,14 @@ export async function POST(req:NextRequest){
   const visualImages:(DeckImage|null)[]=slides.map((_:Slide,i:number)=>images[i]?{...images[i],credit:"User-uploaded image"}:null);
   const candidates=slides.map((item:Slide,i:number)=>({item,i})).filter((x:{item:Slide;i:number})=>!visualImages[x.i]);
   await Promise.all(candidates.map(async({item,i}:{item:Slide;i:number})=>{
-   const terms=[item.visual,item.title,topic,"medical illustration"].filter(Boolean).join(" ").slice(0,150);
-   visualImages[i]=await fetchCommonsImage(terms)||await fetchOpenImage(terms);
+   // Use focused queries instead of combining many terms into one restrictive search.
+   const queries=[clean(item.visual),clean(item.title),clean(item.title)+" medical",topic]
+    .map(q=>q.trim().slice(0,100)).filter((q,index,all)=>q.length>2&&all.indexOf(q)===index);
+   for(const query of queries){
+    visualImages[i]=await fetchCommonsImage(query)||await fetchOpenImage(query);
+    if(visualImages[i])break;
+   }
+   console.info("[Faizan AI] slide image",i+1,visualImages[i]?"found":"not found",queries);
   }));
   for(let i=0;i<slides.length;i++){
    const item=slides[i];
@@ -193,7 +199,8 @@ export async function POST(req:NextRequest){
   const out=await pptx.write({outputType:"nodebuffer"});
   const b=Buffer.isBuffer(out)?out:Buffer.from(out as ArrayBuffer);
   const ab=b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength) as ArrayBuffer;
-  return new NextResponse(ab,{headers:{"Content-Type":"application/vnd.openxmlformats-officedocument.presentationml.presentation","Content-Disposition":'attachment; filename="Faizan-AI-Presentation.pptx"',"Cache-Control":"no-store","X-Faizan-AI-Provider":result.provider}});
+  const imageCount=visualImages.filter(Boolean).length;
+  return new NextResponse(ab,{headers:{"Content-Type":"application/vnd.openxmlformats-officedocument.presentationml.presentation","Content-Disposition":'attachment; filename="Faizan-AI-Presentation.pptx"',"Cache-Control":"no-store","X-Faizan-AI-Provider":result.provider,"X-Faizan-AI-Image-Count":String(imageCount),"X-Faizan-AI-Slide-Count":String(slides.length)}});
  }catch(e){
   console.error("Presentation:",e);
   return NextResponse.json({error:e instanceof Error?e.message:"PowerPoint generation failed."},{status:502});
