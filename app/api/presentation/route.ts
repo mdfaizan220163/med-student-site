@@ -146,11 +146,11 @@ export async function POST(req:NextRequest){
   mark(cover);
 
   const slides=outline.slides.slice(0,count);
-  // Prefer uploads; search Wikimedia Commons first and Openverse as a backup for up to 8 slides.
+  // Prefer uploads; search Wikimedia Commons first and Openverse as a backup for every slide.
   const visualImages:(DeckImage|null)[]=slides.map((_:Slide,i:number)=>images[i]?{...images[i],credit:"User-uploaded image"}:null);
-  const candidates=slides.map((item:Slide,i:number)=>({item,i})).filter((x:{item:Slide;i:number})=>!visualImages[x.i]).slice(0,8);
+  const candidates=slides.map((item:Slide,i:number)=>({item,i})).filter((x:{item:Slide;i:number})=>!visualImages[x.i]);
   await Promise.all(candidates.map(async({item,i}:{item:Slide;i:number})=>{
-   const terms=[item.title,topic].filter(Boolean).join(" ").slice(0,130);
+   const terms=[item.visual,item.title,topic,"medical illustration"].filter(Boolean).join(" ").slice(0,150);
    visualImages[i]=await fetchCommonsImage(terms)||await fetchOpenImage(terms);
   }));
   for(let i=0;i<slides.length;i++){
@@ -159,20 +159,20 @@ export async function POST(req:NextRequest){
    s.background={color:"FFFFFF"};
    s.addShape("rect",{x:0,y:0,w:13.333,h:.16,line:{color:navy},fill:{color:navy}});
    s.addText(clean(item.title,"Section "+(i+1)),{x:.65,y:.55,w:11.9,h:.72,fontFace:"Arial",fontSize:25,bold:true,color:navy,fit:"shrink"});
-   const bullets=Array.isArray(item.bullets)?item.bullets.slice(0,6):[];
+   const bullets=Array.isArray(item.bullets)?item.bullets.slice(0,3):[];
    // Use literal bullet characters rather than PowerPoint bullet metadata.
    // This avoids first-character clipping in some PPTX-to-PDF converters.
    const text=bullets.map((b:string)=>"•  "+clean(b)).join("\n");
    const visual=visualImages[i];
    const hasImage=Boolean(visual);
-   if(text)s.addText(text,{x:.9,y:1.65,w:hasImage?7.0:7.0,h:4.8,fontFace:"Arial",fontSize:16,color:"263849",breakLine:false,paraSpaceAfter:14,fit:"shrink",margin:.12,valign:"top",lineSpacingMultiple:1.05});
+   if(text)s.addText(text,{x:.75,y:1.72,w:hasImage?4.05:5.3,h:4.65,fontFace:"Arial",fontSize:hasImage?15:16,color:"263849",breakLine:false,paraSpaceAfter:12,fit:"shrink",margin:.12,valign:"top",lineSpacingMultiple:1.05});
    if(visual){
-    s.addImage({data:`data:${visual.type};base64,${visual.data}`,x:8.25,y:1.75,w:4.35,h:4.15});
-    s.addText((visual.name+" · "+visual.credit).slice(0,180),{x:8.25,y:5.98,w:4.35,h:.48,fontFace:"Arial",fontSize:6,color:"60788D",fit:"shrink"});
+    s.addImage({data:`data:${visual.type};base64,${visual.data}`,x:hasImage?5.0:6.35,y:1.55,w:hasImage?7.75:6.25,h:4.95});
+    s.addText((visual.name+" · "+visual.credit).slice(0,180),{x:hasImage?5.0:6.35,y:6.55,w:hasImage?7.75:6.25,h:.28,fontFace:"Arial",fontSize:6,color:"60788D",fit:"shrink"});
    }else{
     addAutoDiagram(s,item,navy);
    }
-   if(item.visual)s.addText("Visual idea: "+clean(item.visual),{x:.9,y:6.55,w:hasImage?7:11.4,h:.25,fontFace:"Arial",fontSize:10,color:"2E6F9E",italic:true,fit:"shrink"});
+   if(item.visual)s.addText(clean(item.visual),{x:.9,y:6.55,w:hasImage?3.9:5.2,h:.3,fontFace:"Arial",fontSize:9,color:"2E6F9E",italic:true,fit:"shrink"});
    s.addText((i+1)+" / "+slides.length,{x:.65,y:7.12,w:.6,h:.18,fontFace:"Arial",fontSize:8,color:"8BA2B7",margin:0});
    mark(s);
   }
