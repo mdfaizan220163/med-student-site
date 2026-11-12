@@ -1,8 +1,10 @@
 import {NextRequest,NextResponse} from "next/server";
 import {generateWithFallback,Message} from "@/lib/ai-providers";
+import {createClient} from "@/lib/supabase/server";
 export const runtime="nodejs";
 const SYSTEM=`You are Faizan AI, a medical study assistant for MBBS students. Explain clearly at MBBS level using concise headings and bullets. Clinical cases are educational, not diagnoses. For medical images describe only visible findings and limitations. Never invent citations or guidelines.`;
 export async function POST(req:NextRequest){try{
+ const supabase=await createClient();const {data:{user}}=await supabase.auth.getUser();if(!user)return NextResponse.json({error:"Please log in to use Faizan AI.",loginRequired:true},{status:401});
  const body=await req.json();const messages=body.messages as Message[];const provider=typeof body.provider==="string"?body.provider:"auto";
  if(!Array.isArray(messages)||!messages.length||messages.length>12)return NextResponse.json({error:"Send between 1 and 12 recent messages."},{status:400});
  if(!["auto","gemini","groq","claude","openai"].includes(provider))return NextResponse.json({error:"Unknown provider."},{status:400});
