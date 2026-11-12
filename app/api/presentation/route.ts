@@ -7,6 +7,42 @@ export const runtime="nodejs";
 export const maxDuration=60;
 
 type Slide={title:string;bullets:string[];visual?:string};
+type DeckImage={name:string;data:string;type:string;credit:string};
+async function fetchOpenImage(query:string):Promise<DeckImage|null>{
+ try{
+  const url="https://api.openverse.org/v1/images/?"+new URLSearchParams({q:query,license_type:"commercial",page_size:"5",mature:"false"});
+  const res=await fetch(url,{headers:{"Accept":"application/json"},signal:AbortSignal.timeout(9000)});
+  if(!res.ok)return null;
+  const body=await res.json();
+  for(const item of (body.results||[]).slice(0,5)){
+   if(!item.url||!/^https?:\/\//i.test(item.url))continue;
+   const img=await fetch(item.url,{signal:AbortSignal.timeout(9000)});
+   if(!img.ok)continue;
+   const type=(img.headers.get("content-type")||"").split(";")[0];
+   if(!["image/jpeg","image/png","image/webp"].includes(type))continue;
+   const bytes=Buffer.from(await img.arrayBuffer());
+   if(!bytes.length||bytes.length>5*1024*1024)continue;
+   const license=String(item.license||"").toUpperCase();
+   const creator=String(item.creator||"Unknown creator").slice(0,100);
+   const title=String(item.title||"Open-license image").slice(0,100);
+   const page=String(item.foreign_landing_url||item.detail_url||"");
+   const licenseUrl=String(item.license_url||"");
+   return {name:title,data:bytes.toString("base64"),type,credit:[creator,license,licenseUrl,page].filter(Boolean).join(" · ")};
+  }
+ }catch(e){console.warn("Openverse image lookup:",e);}
+ return null;
+}
+async function generateAiImage(prompt:string):Promise<DeckImage|null>{
+ if(!process.env.OPENAI_API_KEY)return null;
+ try{
+  const res=await fetch("https://api.openai.com/v1/images/generations",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${process.env.OPENAI_API_KEY}`},body:JSON.stringify({model:process.env.OPENAI_IMAGE_MODEL||"gpt-image-2.5-flare",prompt:"Create a medically accurate educational illustration for an MBBS lecture. No labels, no text, no watermark. Clean textbook-style medical infographic, white background. Subject: "+prompt,size:"1536x1024",quality:"low",output_format:"jpeg",n:1}),signal:AbortSignal.timeout(50000)});
+  const data=await res.json();
+  if(!res.ok)throw Error(data?.error?.message||"Image generation failed");
+  const b64=data?.data?.[0]?.b64_json;
+  if(!b64)return null;
+  return {name:"AI-generated medical illustration",data:b64,type:"image/jpeg",credit:"AI-generated with OpenAI"};
+ }catch(e){console.warn("AI image generation:",e);return null;}
+}
 const clean=(v:unknown,f="")=>typeof v==="string"?v.replace(/[\u0000-\u001F]/g," ").trim():f;
 
 export async function POST(req:NextRequest){
@@ -25,7 +61,7 @@ export async function POST(req:NextRequest){
   const images:{name:string;data:string;type:string}[]=[];
   let total=0;
   for(const f of form.getAll("images")){
-   if(!(f instanceof File)||!["image/png","image/jpeg"].includes(f.type))continue;
+   if(!(f instanceof File)||!["image/png","image/jpeg","image/webp"].includes(f.type))continue;
    total+=f.size;
    if(total>12*1024*1024)return NextResponse.json({error:"Uploaded images must be under 12 MB total."},{status:413});
    images.push({name:f.name,data:Buffer.from(await f.arrayBuffer()).toString("base64"),type:f.type});
@@ -56,6 +92,19 @@ export async function POST(req:NextRequest){
   mark(cover);
 
   const slides=outline.slides.slice(0,count);
+  // User uploads take priority; otherwise use open-license images, then a limited AI fallback.
+  const visualImages:(DeckImage|null)[]=await Promise.all(slides.map(async(item,i)=>{
+   if(images[i])return {...images[i],credit:"User-uploaded image"};
+   const query=[topic,item.title,item.visual||"",...(item.bullets||[]).slice(0,2)].join(" ").slice(0,220);
+   return await fetchOpenImage(query);
+  }));
+  let aiFallbacks=0;
+  for(let i=0;i<slides.length;i++){
+   if(!visualImages[i]&&aiFallbacks<3&&process.env.OPENAI_API_KEY){
+    visualImages[i]=await generateAiImage([topic,slides[i].title,slides[i].visual||"",...(slides[i].bullets||[]).slice(0,2)].join(". ").slice(0,900));
+    if(visualImages[i])aiFallbacks++;
+   }
+  }
   for(let i=0;i<slides.length;i++){
    const item=slides[i];
    const s=pptx.addSlide();
@@ -66,12 +115,12 @@ export async function POST(req:NextRequest){
    // Use literal bullet characters rather than PowerPoint bullet metadata.
    // This avoids first-character clipping in some PPTX-to-PDF converters.
    const text=bullets.map(b=>"•  "+clean(b)).join("\n");
-   const hasImage=Boolean(images[i]);
+   const visual=visualImages[i];
+   const hasImage=Boolean(visual);
    if(text)s.addText(text,{x:.9,y:1.65,w:hasImage?7.0:11.4,h:4.8,fontFace:"Arial",fontSize:hasImage?16:19,color:"263849",breakLine:false,paraSpaceAfter:14,fit:"shrink",margin:.12,valign:"top",lineSpacingMultiple:1.05});
-   if(hasImage){
-    const im=images[i];
-    s.addImage({data:`data:${im.type};base64,${im.data}`,x:8.25,y:1.75,w:4.35,h:4.15});
-    s.addText(im.name.slice(0,50),{x:8.25,y:5.98,w:4.35,h:.28,fontFace:"Arial",fontSize:8,color:"60788D",fit:"shrink"});
+   if(visual){
+    s.addImage({data:`data:${visual.type};base64,${visual.data}`,x:8.25,y:1.75,w:4.35,h:4.15});
+    s.addText((visual.name+" · "+visual.credit).slice(0,180),{x:8.25,y:5.98,w:4.35,h:.48,fontFace:"Arial",fontSize:6,color:"60788D",fit:"shrink"});
    }
    if(item.visual)s.addText("Visual idea: "+clean(item.visual),{x:.9,y:6.55,w:hasImage?7:11.4,h:.25,fontFace:"Arial",fontSize:10,color:"2E6F9E",italic:true,fit:"shrink"});
    s.addText((i+1)+" / "+slides.length,{x:.65,y:7.12,w:.6,h:.18,fontFace:"Arial",fontSize:8,color:"8BA2B7",margin:0});
