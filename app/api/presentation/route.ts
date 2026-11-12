@@ -65,12 +65,12 @@ export async function POST(req:NextRequest){
    const bullets=Array.isArray(item.bullets)?item.bullets.slice(0,6):[];
    // Use literal bullet characters rather than PowerPoint bullet metadata.
    // This avoids first-character clipping in some PPTX-to-PDF converters.
-   const text=bullets.map(b=>"•  "+clean(b)).join("\\n");
+   const text=bullets.map(b=>"•  "+clean(b)).join("\n");
    const hasImage=Boolean(images[i]);
-   if(text)s.addText(text,{x:.9,y:1.65,w:hasImage?7.0:11.4,h:4.8,fontFace:"Arial",fontSize:hasImage?16:19,color:"263849",breakLine:false,paraSpaceAfterPt:14,fit:"shrink",margin:.12,valign:"top",lineSpacingMultiple:1.05});
+   if(text)s.addText(text,{x:.9,y:1.65,w:hasImage?7.0:11.4,h:4.8,fontFace:"Arial",fontSize:hasImage?16:19,color:"263849",breakLine:false,paraSpaceAfter:14,fit:"shrink",margin:.12,valign:"top",lineSpacingMultiple:1.05});
    if(hasImage){
     const im=images[i];
-    s.addImage({data:`data:${im.type};base64,${im.data}`,x:8.25,y:1.75,w:4.35,h:4.15,sizingContain:true});
+    s.addImage({data:`data:${im.type};base64,${im.data}`,x:8.25,y:1.75,w:4.35,h:4.15});
     s.addText(im.name.slice(0,50),{x:8.25,y:5.98,w:4.35,h:.28,fontFace:"Arial",fontSize:8,color:"60788D",fit:"shrink"});
    }
    if(item.visual)s.addText("Visual idea: "+clean(item.visual),{x:.9,y:6.55,w:hasImage?7:11.4,h:.25,fontFace:"Arial",fontSize:10,color:"2E6F9E",italic:true,fit:"shrink"});
