@@ -4,7 +4,7 @@ import {generateWithFallback} from "@/lib/ai-providers";
 import {createClient} from "@/lib/supabase/server";
 
 export const runtime="nodejs";
-export const maxDuration=60;
+export const maxDuration=120;
 
 type Slide={title:string;bullets:string[];visual?:string};
 type DeckImage={name:string;data:string;type:string;credit:string};
@@ -203,6 +203,48 @@ export async function POST(req:NextRequest){
     s.addText(im.name.slice(0,50),{x:p.x,y:p.y+p.h+.05,w:p.w,h:.2,fontFace:"Arial",fontSize:8,color:"60788D"});
    });
    mark(s);
+  }
+
+  // Generate a topic-specific visual revision sheet as the final slide.
+  let infographicGenerated=false;
+  if(process.env.OPENAI_API_KEY){
+   try{
+    const summary=slides.map((item,i)=>`Slide ${i+1}: ${clean(item.title)}. ${(item.bullets||[]).map(clean).join("; ")}. Visual: ${clean(item.visual)}`).join("\\n").slice(0,9000);
+    const imagePrompt=`Create a polished, hand-drawn medical study infographic summarizing this MBBS presentation: "${topic}". Language: ${language}. Content to summarize accurately: ${summary}
+Design one portrait 4:5 notebook-style revision sheet on warm cream paper. Use a large clear title, compact color-coded rounded sections, arrows and simple accurate medical/anatomical illustrations. Include only the highest-yield facts from the supplied slides: definitions, mechanisms/classifications, clinical relevance, exam pearls and a short remember checklist as appropriate to the topic. Keep wording concise, spell every visible word correctly, preserve medical terminology, and do not add facts not supported by the supplied content. Make the layout visually balanced, legible, colorful, educational, and suitable as the final revision slide of an MBBS PowerPoint. No photographs, no logos, no watermark.`;
+    const imageResponse=await fetch("https://api.openai.com/v1/images/generations",{
+     method:"POST",
+     headers:{"Content-Type":"application/json",Authorization:`Bearer ${process.env.OPENAI_API_KEY}`},
+     body:JSON.stringify({model:process.env.OPENAI_IMAGE_MODEL||"gpt-image-2.5-flare",prompt:imagePrompt,size:"1024x1536",quality:"medium",output_format:"jpeg"}),
+     signal:AbortSignal.timeout(110000)
+    });
+    const imageData=await imageResponse.json();
+    if(!imageResponse.ok)throw Error(imageData?.error?.message||"OpenAI image generation failed");
+    const b64=imageData?.data?.[0]?.b64_json;
+    if(!b64)throw Error("OpenAI returned no infographic image");
+    const imgBytes=Buffer.from(b64,"base64");
+    const summarySlide=pptx.addSlide();
+    summarySlide.background={color:"F7F1E5"};
+    summarySlide.addText("FINAL REVISION · ${topic}",{x:.45,y:.12,w:12.4,h:.28,fontFace:"Arial",fontSize:10,bold:true,color:navy,align:"center",fit:"shrink",margin:0});
+    summarySlide.addImage({data:`data:image/jpeg;base64,${b64}`,x:4.95,y:.48,w:3.43,h:6.43});
+    summarySlide.addText("AI-generated visual summary · Verify critical clinical details with your textbook",{x:1.0,y:7.05,w:11.3,h:.18,fontFace:"Arial",fontSize:7,color:"60788D",align:"center",margin:0});
+    mark(summarySlide);
+    infographicGenerated=true;
+   }catch(imageError){
+    console.error("Final infographic generation failed; using text revision fallback:",imageError);
+    const summarySlide=pptx.addSlide();
+    summarySlide.background={color:"F7F1E5"};
+    summarySlide.addText("FINAL REVISION · "+topic,{x:.65,y:.45,w:12,h:.65,fontFace:"Arial",fontSize:24,bold:true,color:navy,fit:"shrink"});
+    summarySlide.addText(slides.slice(-6).map((item,i)=>"• "+clean(item.title)+": "+(item.bullets||[]).slice(0,2).map(clean).join("; ")).join("\\n\\n"),{x:.9,y:1.45,w:11.5,h:5.4,fontFace:"Arial",fontSize:15,color:"263849",fit:"shrink",valign:"top",breakLine:false,margin:.12});
+    summarySlide.addText("Image summary could not be generated. Review the key points above.",{x:1,y:6.95,w:11,h:.2,fontFace:"Arial",fontSize:8,color:"60788D",align:"center"});
+    mark(summarySlide);
+   }
+  }else{
+   const summarySlide=pptx.addSlide();
+   summarySlide.background={color:"F7F1E5"};
+   summarySlide.addText("FINAL REVISION · "+topic,{x:.65,y:.45,w:12,h:.65,fontFace:"Arial",fontSize:24,bold:true,color:navy,fit:"shrink"});
+   summarySlide.addText(slides.slice(-6).map(item=>"• "+clean(item.title)+": "+(item.bullets||[]).slice(0,2).map(clean).join("; ")).join("\\n\\n"),{x:.9,y:1.45,w:11.5,h:5.4,fontFace:"Arial",fontSize:15,color:"263849",fit:"shrink",valign:"top",breakLine:false,margin:.12});
+   mark(summarySlide);
   }
 
   const out=await pptx.write({outputType:"nodebuffer"});
