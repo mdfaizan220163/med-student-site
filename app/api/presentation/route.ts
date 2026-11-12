@@ -8,6 +8,13 @@ export const maxDuration=60;
 
 type Slide={title:string;bullets:string[];visual?:string};
 type DeckImage={name:string;data:string;type:string;credit:string};
+const stopWords=new Set(["the","and","for","with","from","into","about","medical","anatomy","diagram","image","illustration","showing","view","of","in","on","to","a","an","assessment","modern","methods"]);
+function relevanceScore(query:string,candidate:string){
+ const terms=[...new Set(query.toLowerCase().replace(/[^a-z0-9\\s-]/g," ").split(/\\s+/).filter(w=>w.length>2&&!stopWords.has(w)))];
+ if(!terms.length)return 0;
+ const haystack=candidate.toLowerCase().replace(/[^a-z0-9\\s-]/g," ");
+ return terms.filter(w=>haystack.includes(w)).length/terms.length;
+}
 async function fetchCommonsImage(query:string):Promise<DeckImage|null>{
  try{
   const params=new URLSearchParams({
@@ -23,6 +30,10 @@ async function fetchCommonsImage(query:string):Promise<DeckImage|null>{
   const body=await res.json();
   for(const page of (body?.query?.pages||[])){
    const info=page.imageinfo?.[0];
+   const meta=info?.extmetadata||{};
+   const plain=(v:unknown)=>typeof v==="object"&&v!==null&&"value" in v?String((v as {value:unknown}).value).replace(/<[^>]*>/g," ").replace(/&amp;/g,"&").trim():"";
+   const candidateText=[String(page.title||""),plain(meta.ImageDescription),plain(meta.ObjectName)].join(" ");
+   if(relevanceScore(query,candidateText)<0.45)continue;
    const imageUrl=info?.thumburl||info?.url;
    if(!imageUrl||!/^https?:\/\//i.test(imageUrl))continue;
    const img=await fetch(imageUrl,{headers:{"User-Agent":"FaizanAI-MedicalSlides/1.0"},signal:AbortSignal.timeout(9000)});
@@ -31,8 +42,6 @@ async function fetchCommonsImage(query:string):Promise<DeckImage|null>{
    if(!["image/jpeg","image/png"].includes(type))continue;
    const bytes=Buffer.from(await img.arrayBuffer());
    if(!bytes.length||bytes.length>5*1024*1024)continue;
-   const meta=info.extmetadata||{};
-   const plain=(v:unknown)=>typeof v==="object"&&v!==null&&"value" in v?String((v as {value:unknown}).value).replace(/<[^>]*>/g," ").replace(/&amp;/g,"&").trim():"";
    const artist=plain(meta.Artist)||"Wikimedia Commons contributor";
    const license=plain(meta.LicenseShortName)||"Open license";
    const licenseUrl=plain(meta.LicenseUrl);
@@ -50,6 +59,8 @@ async function fetchOpenImage(query:string):Promise<DeckImage|null>{
   const body=await res.json();
   for(const item of (body.results||[]).slice(0,8)){
    if(!item.url||!/^https?:\/\//i.test(item.url))continue;
+   const candidateText=[String(item.title||""),String(item.description||""),...(Array.isArray(item.tags)?item.tags.map((t:any)=>typeof t==="string"?t:String(t.name||"")):[])].join(" ");
+   if(relevanceScore(query,candidateText)<0.45)continue;
    const img=await fetch(item.url,{signal:AbortSignal.timeout(7000)});
    if(!img.ok)continue;
    const type=(img.headers.get("content-type")||"").split(";")[0];
@@ -146,18 +157,16 @@ export async function POST(req:NextRequest){
   mark(cover);
 
   const slides=outline.slides.slice(0,count);
-  // Prefer uploads; search Wikimedia Commons first and Openverse as a backup for every slide.
-  const visualImages:(DeckImage|null)[]=slides.map((_:Slide,i:number)=>images[i]?{...images[i],credit:"User-uploaded image"}:null);
-  const candidates=slides.map((item:Slide,i:number)=>({item,i})).filter((x:{item:Slide;i:number})=>!visualImages[x.i]);
-  await Promise.all(candidates.map(async({item,i}:{item:Slide;i:number})=>{
-   // Use focused queries instead of combining many terms into one restrictive search.
-   const queries=[clean(item.visual),clean(item.title),clean(item.title)+" medical",topic]
-    .map(q=>q.trim().slice(0,100)).filter((q,index,all)=>q.length>2&&all.indexOf(q)===index);
+  // Never assign uploads by order; search each slide independently and reject weak matches.
+  const visualImages:(DeckImage|null)[]=slides.map(()=>null);
+  await Promise.all(slides.map(async(item:Slide,i:number)=>{
+   const queries=[clean(item.title)+" "+clean(item.visual),clean(item.title),clean(item.visual)]
+    .map(q=>q.trim().slice(0,120)).filter((q,index,all)=>q.length>2&&all.indexOf(q)===index);
    for(const query of queries){
     visualImages[i]=await fetchCommonsImage(query)||await fetchOpenImage(query);
     if(visualImages[i])break;
    }
-   console.info("[Faizan AI] slide image",i+1,visualImages[i]?"found":"not found",queries);
+   console.info("[Faizan AI] slide image",i+1,visualImages[i]?"relevant match found":"no sufficiently relevant match",queries);
   }));
   for(let i=0;i<slides.length;i++){
    const item=slides[i];
