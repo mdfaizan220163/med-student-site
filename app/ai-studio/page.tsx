@@ -1,7 +1,8 @@
 "use client";
 import { ChangeEvent, FormEvent, useRef, useState } from "react";
 import Link from "next/link";
-type Message = { role: "user" | "assistant"; content: string; image?: string };\ntype Provider = "auto" | "gemini" | "groq" | "claude" | "openai";
+type Message = { role: "user" | "assistant"; content: string; image?: string };
+type Provider = "auto" | "gemini" | "groq" | "claude" | "openai";
 const starters = ["Explain the mechanism of apoptosis at MBBS level.","Compare reversible and irreversible cell injury.","Create 5 viva questions on inflammation.","Explain the cardiac cycle step by step."];
 export default function AIStudioPage() {
  const [messages,setMessages]=useState<Message[]>([]),[input,setInput]=useState(""),[image,setImage]=useState<string|null>(null),[imageName,setImageName]=useState(""),[loading,setLoading]=useState(false),[error,setError]=useState(""),[provider,setProvider]=useState<Provider>("auto"),[lastProvider,setLastProvider]=useState("");
