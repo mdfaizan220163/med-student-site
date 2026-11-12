@@ -30,7 +30,7 @@ async function fetchCommonsImage(query:string):Promise<DeckImage|null>{
    const candidate=[String(page.title||""),plain(meta.ImageDescription),plain(meta.ObjectName)].join(" ");
    if(relevanceScore(query,candidate)<0.25)continue;
    const imageUrl=info?.thumburl||info?.url;
-   if(!imageUrl||!/^https?:\\/\\//i.test(imageUrl))continue;
+   if(typeof imageUrl!=="string"||!(imageUrl.startsWith("https://")||imageUrl.startsWith("http://")))continue;
    const img=await fetch(imageUrl,{headers:{"User-Agent":"FaizanAI-MedicalSlides/1.0"},signal:AbortSignal.timeout(12000)});
    if(!img.ok)continue;
    const type=(img.headers.get("content-type")||"").split(";")[0].toLowerCase();
@@ -52,7 +52,7 @@ async function fetchOpenImage(query:string):Promise<DeckImage|null>{
   const body=await res.json();
   const results=(body.results||[]).sort((a:any,b:any)=>relevanceScore(query,[b.title,b.description,...(b.tags||[]).map((t:any)=>typeof t==="string"?t:t.name||"")].join(" "))-relevanceScore(query,[a.title,a.description,...(a.tags||[]).map((t:any)=>typeof t==="string"?t:t.name||"")].join(" ")));
   for(const item of results){
-   if(!item.url||!/^https?:\\/\\//i.test(item.url))continue;
+   if(typeof item.url!=="string"||!(item.url.startsWith("https://")||item.url.startsWith("http://")))continue;
    const candidate=[String(item.title||""),String(item.description||""),...(Array.isArray(item.tags)?item.tags.map((t:any)=>typeof t==="string"?t:String(t.name||"")):[])].join(" ");
    if(relevanceScore(query,candidate)<0.2)continue;
    const img=await fetch(item.url,{signal:AbortSignal.timeout(10000)});
