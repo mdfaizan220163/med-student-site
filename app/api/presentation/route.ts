@@ -1,10 +1,12 @@
 import {NextRequest,NextResponse} from "next/server";
 import PptxGenJS from "pptxgenjs";
 import {generateWithFallback} from "@/lib/ai-providers";
+import {createClient} from "@/lib/supabase/server";
 export const runtime="nodejs";export const maxDuration=60;
 type Slide={title:string;bullets:string[];visual?:string};
 const clean=(v:unknown,f="")=>typeof v==="string"?v.replace(/[\\u0000-\\u001f]/g," ").trim():f;
 export async function POST(req:NextRequest){try{
+ const supabase=await createClient();const {data:{user}}=await supabase.auth.getUser();if(!user)return NextResponse.json({error:"Please log in to create presentations.",loginRequired:true},{status:401});
  const form=await req.formData();const topic=clean(form.get("topic"));const language=clean(form.get("language"),"English");const count=Math.min(20,Math.max(5,Number(form.get("slides"))||10));const provider=clean(form.get("provider"),"auto");
  if(!topic||topic.length>300)return NextResponse.json({error:"Enter a topic (maximum 300 characters)."},{status:400});
  const images:{name:string;data:string;type:string}[]=[];let total=0;for(const f of form.getAll("images")){if(!(f instanceof File)||!["image/png","image/jpeg","image/webp"].includes(f.type))continue;total+=f.size;if(total>12*1024*1024)return NextResponse.json({error:"Uploaded images must be under 12 MB total."},{status:413});images.push({name:f.name,data:Buffer.from(await f.arrayBuffer()).toString("base64"),type:f.type});}
