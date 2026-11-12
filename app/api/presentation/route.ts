@@ -40,7 +40,7 @@ function addAutoDiagram(s:PptxGenJS.Slide,item:Slide,navy:string){
  points.forEach((p,i)=>{
   const y=3.0+i*1.0;
   s.addShape("roundRect",{x:8.25,y,w:4.35,h:.78,rectRadius:.08,line:{color:"D8E5EF",width:1},fill:{color:i===0?"EEF5FA":"F7FAFC"}});
-  s.addShape(PptxGenJS.ShapeType.ellipse,{x:8.43,y:y+.22,w:.32,h:.32,line:{color:"477EAA"},fill:{color:"477EAA"}});
+  s.addShape("ellipse",{x:8.43,y:y+.22,w:.32,h:.32,line:{color:"477EAA"},fill:{color:"477EAA"}});
   s.addText(String(i+1),{x:8.43,y:y+.245,w:.32,h:.2,fontFace:"Arial",fontSize:9,bold:true,color:"FFFFFF",align:"center",margin:0});
   s.addText(p,{x:8.9,y:y+.12,w:3.48,h:.55,fontFace:"Arial",fontSize:10,color:"263849",fit:"shrink",valign:"middle",margin:.04});
  });
@@ -123,7 +123,7 @@ export async function POST(req:NextRequest){
    const item=slides[i];
    const s=pptx.addSlide();
    s.background={color:"FFFFFF"};
-   s.addShape(pptx.ShapeType.rect,{x:0,y:0,w:13.333,h:.16,line:{color:navy},fill:{color:navy}});
+   s.addShape("rect",{x:0,y:0,w:13.333,h:.16,line:{color:navy},fill:{color:navy}});
    s.addText(clean(item.title,"Section "+(i+1)),{x:.65,y:.55,w:11.9,h:.72,fontFace:"Arial",fontSize:25,bold:true,color:navy,fit:"shrink"});
    const bullets=Array.isArray(item.bullets)?item.bullets.slice(0,6):[];
    // Use literal bullet characters rather than PowerPoint bullet metadata.
