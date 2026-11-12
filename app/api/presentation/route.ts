@@ -8,44 +8,37 @@ export const maxDuration=120;
 
 type Slide={title:string;bullets:string[];visual?:string};
 type DeckImage={name:string;data:string;type:string;credit:string};
-const stopWords=new Set(["the","and","for","with","from","into","about","medical","anatomy","diagram","image","illustration","showing","view","of","in","on","to","a","an","assessment","modern","methods"]);
+const stopWords=new Set(["the","and","for","with","from","into","about","medical","anatomy","diagram","image","illustration","showing","view","of","in","on","to","a","an","assessment","modern","methods","overview","introduction","principles","clinical","study","lecture"]);
+function tokens(value:string){
+ return [...new Set(value.toLowerCase().replace(/[^a-z0-9\\s-]/g," ").split(/\\s+/).filter(w=>w.length>2&&!stopWords.has(w)))];
+}
 function relevanceScore(query:string,candidate:string){
- const terms=[...new Set(query.toLowerCase().replace(/[^a-z0-9\s-]/g," ").split(/\s+/).filter(w=>w.length>2&&!stopWords.has(w)))];
- if(!terms.length)return 0;
- const haystack=candidate.toLowerCase().replace(/[^a-z0-9\\s-]/g," ");
- return terms.filter(w=>haystack.includes(w)).length/terms.length;
+ const terms=tokens(query), words=new Set(tokens(candidate));
+ if(!terms.length||!words.size)return 0;
+ return terms.filter(w=>words.has(w)||[...words].some(v=>v.length>4&&(v.includes(w)||w.includes(v)))).length/terms.length;
 }
 async function fetchCommonsImage(query:string):Promise<DeckImage|null>{
  try{
-  const params=new URLSearchParams({
-   action:"query",format:"json",formatversion:"2",generator:"search",
-   gsrsearch:"filetype:bitmap "+query,gsrnamespace:"6",gsrlimit:"6",
-   prop:"imageinfo",iiprop:"url|extmetadata",iiurlwidth:"1200"
-  });
-  const res=await fetch("https://commons.wikimedia.org/w/api.php?"+params.toString(),{
-   headers:{"Accept":"application/json","User-Agent":"FaizanAI-MedicalSlides/1.0 (educational presentation generator)"},
-   signal:AbortSignal.timeout(9000)
-  });
+  const params=new URLSearchParams({action:"query",format:"json",formatversion:"2",generator:"search",gsrsearch:"filetype:bitmap "+query,gsrnamespace:"6",gsrlimit:"12",prop:"imageinfo",iiprop:"url|extmetadata",iiurlwidth:"1400"});
+  const res=await fetch("https://commons.wikimedia.org/w/api.php?"+params.toString(),{headers:{"Accept":"application/json","User-Agent":"FaizanAI-MedicalSlides/1.0 (educational presentation generator)"},signal:AbortSignal.timeout(12000)});
   if(!res.ok)return null;
   const body=await res.json();
-  for(const page of (body?.query?.pages||[])){
-   const info=page.imageinfo?.[0];
-   const meta=info?.extmetadata||{};
+  const pages=(body?.query?.pages||[]).sort((a:any,b:any)=>relevanceScore(query,[b.title,b.imageinfo?.[0]?.extmetadata?.ImageDescription?.value||""].join(" "))-relevanceScore(query,[a.title,a.imageinfo?.[0]?.extmetadata?.ImageDescription?.value||""].join(" ")));
+  for(const page of pages){
+   const info=page.imageinfo?.[0],meta=info?.extmetadata||{};
    const plain=(v:unknown)=>typeof v==="object"&&v!==null&&"value" in v?String((v as {value:unknown}).value).replace(/<[^>]*>/g," ").replace(/&amp;/g,"&").trim():"";
-   const candidateText=[String(page.title||""),plain(meta.ImageDescription),plain(meta.ObjectName)].join(" ");
-   if(relevanceScore(query,candidateText)<0.45)continue;
+   const candidate=[String(page.title||""),plain(meta.ImageDescription),plain(meta.ObjectName)].join(" ");
+   if(relevanceScore(query,candidate)<0.25)continue;
    const imageUrl=info?.thumburl||info?.url;
-   if(!imageUrl||!/^https?:\/\//i.test(imageUrl))continue;
-   const img=await fetch(imageUrl,{headers:{"User-Agent":"FaizanAI-MedicalSlides/1.0"},signal:AbortSignal.timeout(9000)});
+   if(!imageUrl||!/^https?:\\/\\//i.test(imageUrl))continue;
+   const img=await fetch(imageUrl,{headers:{"User-Agent":"FaizanAI-MedicalSlides/1.0"},signal:AbortSignal.timeout(12000)});
    if(!img.ok)continue;
    const type=(img.headers.get("content-type")||"").split(";")[0].toLowerCase();
    if(!["image/jpeg","image/png"].includes(type))continue;
    const bytes=Buffer.from(await img.arrayBuffer());
-   if(!bytes.length||bytes.length>5*1024*1024)continue;
-   const artist=plain(meta.Artist)||"Wikimedia Commons contributor";
-   const license=plain(meta.LicenseShortName)||"Open license";
-   const licenseUrl=plain(meta.LicenseUrl);
-   const pageUrl=String(page.title||"").startsWith("File:")?"https://commons.wikimedia.org/wiki/"+encodeURIComponent(String(page.title).replace(/ /g,"_")):"";
+   if(!bytes.length||bytes.length>6*1024*1024)continue;
+   const artist=plain(meta.Artist)||"Wikimedia Commons contributor",license=plain(meta.LicenseShortName)||"Open license",licenseUrl=plain(meta.LicenseUrl);
+   const pageUrl="https://commons.wikimedia.org/wiki/"+encodeURIComponent(String(page.title||"").replace(/ /g,"_"));
    return {name:String(page.title||"Wikimedia Commons image").replace(/^File:/,"").slice(0,80),data:bytes.toString("base64"),type,credit:[artist,license,licenseUrl,pageUrl].filter(Boolean).join(" · ")};
   }
  }catch(e){console.warn("Wikimedia Commons image lookup:",e);}
@@ -53,25 +46,22 @@ async function fetchCommonsImage(query:string):Promise<DeckImage|null>{
 }
 async function fetchOpenImage(query:string):Promise<DeckImage|null>{
  try{
-  const url="https://api.openverse.org/v1/images/?"+new URLSearchParams({q:query,license_type:"commercial",page_size:"8",mature:"false"});
-  const res=await fetch(url,{headers:{"Accept":"application/json"},signal:AbortSignal.timeout(7000)});
+  const url="https://api.openverse.org/v1/images/?"+new URLSearchParams({q:query,page_size:"20",mature:"false"});
+  const res=await fetch(url,{headers:{"Accept":"application/json"},signal:AbortSignal.timeout(12000)});
   if(!res.ok)return null;
   const body=await res.json();
-  for(const item of (body.results||[]).slice(0,8)){
-   if(!item.url||!/^https?:\/\//i.test(item.url))continue;
-   const candidateText=[String(item.title||""),String(item.description||""),...(Array.isArray(item.tags)?item.tags.map((t:any)=>typeof t==="string"?t:String(t.name||"")):[])].join(" ");
-   if(relevanceScore(query,candidateText)<0.45)continue;
-   const img=await fetch(item.url,{signal:AbortSignal.timeout(7000)});
+  const results=(body.results||[]).sort((a:any,b:any)=>relevanceScore(query,[b.title,b.description,...(b.tags||[]).map((t:any)=>typeof t==="string"?t:t.name||"")].join(" "))-relevanceScore(query,[a.title,a.description,...(a.tags||[]).map((t:any)=>typeof t==="string"?t:t.name||"")].join(" ")));
+  for(const item of results){
+   if(!item.url||!/^https?:\\/\\//i.test(item.url))continue;
+   const candidate=[String(item.title||""),String(item.description||""),...(Array.isArray(item.tags)?item.tags.map((t:any)=>typeof t==="string"?t:String(t.name||"")):[])].join(" ");
+   if(relevanceScore(query,candidate)<0.2)continue;
+   const img=await fetch(item.url,{signal:AbortSignal.timeout(10000)});
    if(!img.ok)continue;
-   const type=(img.headers.get("content-type")||"").split(";")[0];
+   const type=(img.headers.get("content-type")||"").split(";")[0].toLowerCase();
    if(!["image/jpeg","image/png"].includes(type))continue;
    const bytes=Buffer.from(await img.arrayBuffer());
-   if(!bytes.length||bytes.length>4*1024*1024)continue;
-   const license=String(item.license||"").toUpperCase();
-   const creator=String(item.creator||"Unknown creator").slice(0,80);
-   const title=String(item.title||"Open-license image").slice(0,80);
-   const page=String(item.foreign_landing_url||item.detail_url||"");
-   const licenseUrl=String(item.license_url||"");
+   if(!bytes.length||bytes.length>6*1024*1024)continue;
+   const license=String(item.license||"").toUpperCase(),creator=String(item.creator||"Unknown creator").slice(0,80),title=String(item.title||"Open-license image").slice(0,80),page=String(item.foreign_landing_url||item.detail_url||""),licenseUrl=String(item.license_url||"");
    return {name:title,data:bytes.toString("base64"),type,credit:[creator,license,licenseUrl,page].filter(Boolean).join(" · ")};
   }
  }catch(e){console.warn("Openverse image lookup:",e);}
@@ -159,15 +149,16 @@ export async function POST(req:NextRequest){
   const slides=outline.slides.slice(0,count);
   // Never assign uploads by order; search each slide independently and reject weak matches.
   const visualImages:(DeckImage|null)[]=slides.map(()=>null);
-  await Promise.all(slides.map(async(item:Slide,i:number)=>{
-   const queries=[clean(item.title)+" "+clean(item.visual),clean(item.title),clean(item.visual)]
-    .map(q=>q.trim().slice(0,120)).filter((q,index,all)=>q.length>2&&all.indexOf(q)===index);
+  // Keep requests sequential to avoid Wikimedia/Openverse rate limits; try focused title and visual searches.
+  for(let i=0;i<slides.length;i++){
+   const item=slides[i];
+   const queries=[clean(item.title),clean(item.visual),clean(item.title)+" medical illustration"].map(q=>q.trim().slice(0,100)).filter((q,index,all)=>q.length>2&&all.indexOf(q)===index);
    for(const query of queries){
     visualImages[i]=await fetchCommonsImage(query)||await fetchOpenImage(query);
     if(visualImages[i])break;
    }
-   console.info("[Faizan AI] slide image",i+1,visualImages[i]?"relevant match found":"no sufficiently relevant match",queries);
-  }));
+   console.info("[Faizan AI] slide image",i+1,visualImages[i]?"relevant match found":"no suitable open-license image",queries);
+  }
   for(let i=0;i<slides.length;i++){
    const item=slides[i];
    const s=pptx.addSlide();
