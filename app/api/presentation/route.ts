@@ -208,7 +208,7 @@ export async function POST(req:NextRequest){
   // Generate a topic-specific visual revision sheet as the final slide.
   if(process.env.OPENAI_API_KEY){
    try{
-    const summary=slides.map((item,i)=>`Slide ${i+1}: ${clean(item.title)}. ${(item.bullets||[]).map(clean).join("; ")}. Visual: ${clean(item.visual)}`).join("\n").slice(0,9000);
+    const summary=slides.map((item,i)=>`Slide ${i+1}: ${clean(item.title)}. ${(item.bullets||[]).map(v=>clean(v)).join("; ")}. Visual: ${clean(item.visual)}`).join("\n").slice(0,9000);
     const imagePrompt=`Create a polished, hand-drawn medical study infographic summarizing this MBBS presentation: "${topic}". Language: ${language}. Content to summarize accurately: ${summary}
 Design one portrait 4:5 notebook-style revision sheet on warm cream paper. Use a large clear title, compact color-coded rounded sections, arrows and simple accurate medical/anatomical illustrations. Include only the highest-yield facts from the supplied slides: definitions, mechanisms/classifications, clinical relevance, exam pearls and a short remember checklist as appropriate to the topic. Keep wording concise, spell every visible word correctly, preserve medical terminology, and do not add facts not supported by the supplied content. Make the layout visually balanced, legible, colorful, educational, and suitable as the final revision slide of an MBBS PowerPoint. No photographs, no logos, no watermark.`;
     const imageResponse=await fetch("https://api.openai.com/v1/images/generations",{
@@ -232,7 +232,7 @@ Design one portrait 4:5 notebook-style revision sheet on warm cream paper. Use a
     const summarySlide=pptx.addSlide();
     summarySlide.background={color:"F7F1E5"};
     summarySlide.addText("FINAL REVISION · "+topic,{x:.65,y:.45,w:12,h:.65,fontFace:"Arial",fontSize:24,bold:true,color:navy,fit:"shrink"});
-    summarySlide.addText(slides.slice(-6).map((item,i)=>"• "+clean(item.title)+": "+(item.bullets||[]).slice(0,2).map(clean).join("; ")).join("\n\n"),{x:.9,y:1.45,w:11.5,h:5.4,fontFace:"Arial",fontSize:15,color:"263849",fit:"shrink",valign:"top",breakLine:false,margin:.12});
+    summarySlide.addText(slides.slice(-6).map((item,i)=>"• "+clean(item.title)+": "+(item.bullets||[]).slice(0,2).map(v=>clean(v)).join("; ")).join("\n\n"),{x:.9,y:1.45,w:11.5,h:5.4,fontFace:"Arial",fontSize:15,color:"263849",fit:"shrink",valign:"top",breakLine:false,margin:.12});
     summarySlide.addText("Image summary could not be generated. Review the key points above.",{x:1,y:6.95,w:11,h:.2,fontFace:"Arial",fontSize:8,color:"60788D",align:"center"});
     mark(summarySlide);
    }
@@ -240,7 +240,7 @@ Design one portrait 4:5 notebook-style revision sheet on warm cream paper. Use a
    const summarySlide=pptx.addSlide();
    summarySlide.background={color:"F7F1E5"};
    summarySlide.addText("FINAL REVISION · "+topic,{x:.65,y:.45,w:12,h:.65,fontFace:"Arial",fontSize:24,bold:true,color:navy,fit:"shrink"});
-   summarySlide.addText(slides.slice(-6).map(item=>"• "+clean(item.title)+": "+(item.bullets||[]).slice(0,2).map(clean).join("; ")).join("\\n\\n"),{x:.9,y:1.45,w:11.5,h:5.4,fontFace:"Arial",fontSize:15,color:"263849",fit:"shrink",valign:"top",breakLine:false,margin:.12});
+   summarySlide.addText(slides.slice(-6).map(item=>"• "+clean(item.title)+": "+(item.bullets||[]).slice(0,2).map(v=>clean(v)).join("; ")).join("\n\n"),{x:.9,y:1.45,w:11.5,h:5.4,fontFace:"Arial",fontSize:15,color:"263849",fit:"shrink",valign:"top",breakLine:false,margin:.12});
    mark(summarySlide);
   }
 
