@@ -19,52 +19,50 @@ function relevanceScore(query:string,candidate:string){
 }
 async function fetchCommonsImage(query:string):Promise<DeckImage|null>{
  try{
-  const params=new URLSearchParams({action:"query",format:"json",formatversion:"2",generator:"search",gsrsearch:"filetype:bitmap "+query,gsrnamespace:"6",gsrlimit:"12",prop:"imageinfo",iiprop:"url|extmetadata",iiurlwidth:"1400"});
-  const res=await fetch("https://commons.wikimedia.org/w/api.php?"+params.toString(),{headers:{"Accept":"application/json","User-Agent":"FaizanAI-MedicalSlides/1.0 (educational presentation generator)"},signal:AbortSignal.timeout(12000)});
+  const params=new URLSearchParams({action:"query",format:"json",formatversion:"2",generator:"search",gsrsearch:"filetype:bitmap "+query,gsrnamespace:"6",gsrlimit:"8",prop:"imageinfo",iiprop:"url|extmetadata",iiurlwidth:"1200"});
+  const res=await fetch("https://commons.wikimedia.org/w/api.php?"+params.toString(),{headers:{"Accept":"application/json","User-Agent":"FaizanAI-MedicalSlides/1.0"},signal:AbortSignal.timeout(4500)});
   if(!res.ok)return null;
   const body=await res.json();
-  const pages=(body?.query?.pages||[]).sort((a:any,b:any)=>relevanceScore(query,[b.title,b.imageinfo?.[0]?.extmetadata?.ImageDescription?.value||""].join(" "))-relevanceScore(query,[a.title,a.imageinfo?.[0]?.extmetadata?.ImageDescription?.value||""].join(" ")));
-  for(const page of pages){
+  for(const page of body?.query?.pages||[]){
    const info=page.imageinfo?.[0],meta=info?.extmetadata||{};
    const plain=(v:unknown)=>typeof v==="object"&&v!==null&&"value" in v?String((v as {value:unknown}).value).replace(/<[^>]*>/g," ").replace(/&amp;/g,"&").trim():"";
    const candidate=[String(page.title||""),plain(meta.ImageDescription),plain(meta.ObjectName)].join(" ");
-   if(relevanceScore(query,candidate)<0.25)continue;
+   if(relevanceScore(query,candidate)<0.2)continue;
    const imageUrl=info?.thumburl||info?.url;
    if(typeof imageUrl!=="string"||!(imageUrl.startsWith("https://")||imageUrl.startsWith("http://")))continue;
-   const img=await fetch(imageUrl,{headers:{"User-Agent":"FaizanAI-MedicalSlides/1.0"},signal:AbortSignal.timeout(12000)});
+   const img=await fetch(imageUrl,{signal:AbortSignal.timeout(4500)});
    if(!img.ok)continue;
    const type=(img.headers.get("content-type")||"").split(";")[0].toLowerCase();
    if(!["image/jpeg","image/png"].includes(type))continue;
    const bytes=Buffer.from(await img.arrayBuffer());
-   if(!bytes.length||bytes.length>6*1024*1024)continue;
+   if(!bytes.length||bytes.length>5*1024*1024)continue;
    const artist=plain(meta.Artist)||"Wikimedia Commons contributor",license=plain(meta.LicenseShortName)||"Open license",licenseUrl=plain(meta.LicenseUrl);
    const pageUrl="https://commons.wikimedia.org/wiki/"+encodeURIComponent(String(page.title||"").replace(/ /g,"_"));
    return {name:String(page.title||"Wikimedia Commons image").replace(/^File:/,"").slice(0,80),data:bytes.toString("base64"),type,credit:[artist,license,licenseUrl,pageUrl].filter(Boolean).join(" · ")};
   }
- }catch(e){console.warn("Wikimedia Commons image lookup:",e);}
+ }catch(e){console.warn("Commons lookup:",e);}
  return null;
 }
 async function fetchOpenImage(query:string):Promise<DeckImage|null>{
  try{
-  const url="https://api.openverse.org/v1/images/?"+new URLSearchParams({q:query,page_size:"20",mature:"false"});
-  const res=await fetch(url,{headers:{"Accept":"application/json"},signal:AbortSignal.timeout(12000)});
+  const url="https://api.openverse.org/v1/images/?"+new URLSearchParams({q:query,page_size:"8",mature:"false"});
+  const res=await fetch(url,{headers:{"Accept":"application/json"},signal:AbortSignal.timeout(4500)});
   if(!res.ok)return null;
   const body=await res.json();
-  const results=(body.results||[]).sort((a:any,b:any)=>relevanceScore(query,[b.title,b.description,...(b.tags||[]).map((t:any)=>typeof t==="string"?t:t.name||"")].join(" "))-relevanceScore(query,[a.title,a.description,...(a.tags||[]).map((t:any)=>typeof t==="string"?t:t.name||"")].join(" ")));
-  for(const item of results){
+  for(const item of body.results||[]){
    if(typeof item.url!=="string"||!(item.url.startsWith("https://")||item.url.startsWith("http://")))continue;
    const candidate=[String(item.title||""),String(item.description||""),...(Array.isArray(item.tags)?item.tags.map((t:any)=>typeof t==="string"?t:String(t.name||"")):[])].join(" ");
-   if(relevanceScore(query,candidate)<0.2)continue;
-   const img=await fetch(item.url,{signal:AbortSignal.timeout(10000)});
+   if(relevanceScore(query,candidate)<0.15)continue;
+   const img=await fetch(item.url,{signal:AbortSignal.timeout(4500)});
    if(!img.ok)continue;
    const type=(img.headers.get("content-type")||"").split(";")[0].toLowerCase();
    if(!["image/jpeg","image/png"].includes(type))continue;
    const bytes=Buffer.from(await img.arrayBuffer());
-   if(!bytes.length||bytes.length>6*1024*1024)continue;
+   if(!bytes.length||bytes.length>5*1024*1024)continue;
    const license=String(item.license||"").toUpperCase(),creator=String(item.creator||"Unknown creator").slice(0,80),title=String(item.title||"Open-license image").slice(0,80),page=String(item.foreign_landing_url||item.detail_url||""),licenseUrl=String(item.license_url||"");
    return {name:title,data:bytes.toString("base64"),type,credit:[creator,license,licenseUrl,page].filter(Boolean).join(" · ")};
   }
- }catch(e){console.warn("Openverse image lookup:",e);}
+ }catch(e){console.warn("Openverse lookup:",e);}
  return null;
 }
 function addAutoDiagram(s:PptxGenJS.Slide,item:Slide,navy:string){
@@ -149,7 +147,20 @@ export async function POST(req:NextRequest){
   const slides=outline.slides.slice(0,count);
   // Never assign uploads by order; search each slide independently and reject weak matches.
   const visualImages:(DeckImage|null)[]=slides.map(()=>null);
-  // Keep requests sequential to avoid Wikimedia/Openverse rate limits; try focused title and visual searches.
+  // Search images with four workers in parallel; avoid long sequential waits.
+  let nextImageIndex=0;
+  const imageWorker=async()=>{
+   while(true){
+    const i=nextImageIndex++;
+    if(i>=slides.length)return;
+    const item=slides[i];
+    const query=[clean(item.title),clean(item.visual)].filter(Boolean).join(" ").slice(0,100);
+    if(!query.trim())continue;
+    visualImages[i]=await fetchCommonsImage(query)||await fetchOpenImage(query);
+    console.info("[Faizan AI] slide image",i+1,visualImages[i]?"found":"diagram fallback");
+   }
+  };
+  await Promise.all(Array.from({length:Math.min(4,slides.length)},()=>imageWorker()));
   for(let i=0;i<slides.length;i++){
    const item=slides[i];
    const queries=[clean(item.title),clean(item.visual),clean(item.title)+" medical illustration"].map(q=>q.trim().slice(0,100)).filter((q,index,all)=>q.length>2&&all.indexOf(q)===index);
@@ -196,44 +207,19 @@ export async function POST(req:NextRequest){
    mark(s);
   }
 
-  // Generate a topic-specific visual revision sheet as the final slide.
-  if(process.env.OPENAI_API_KEY){
-   try{
-    const summary=slides.map((item,i)=>`Slide ${i+1}: ${clean(item.title)}. ${(item.bullets||[]).map(v=>clean(v)).join("; ")}. Visual: ${clean(item.visual)}`).join("\n").slice(0,9000);
-    const imagePrompt=`Create a polished, hand-drawn medical study infographic summarizing this MBBS presentation: "${topic}". Language: ${language}. Content to summarize accurately: ${summary}
-Design one portrait 4:5 notebook-style revision sheet on warm cream paper. Use a large clear title, compact color-coded rounded sections, arrows and simple accurate medical/anatomical illustrations. Include only the highest-yield facts from the supplied slides: definitions, mechanisms/classifications, clinical relevance, exam pearls and a short remember checklist as appropriate to the topic. Keep wording concise, spell every visible word correctly, preserve medical terminology, and do not add facts not supported by the supplied content. Make the layout visually balanced, legible, colorful, educational, and suitable as the final revision slide of an MBBS PowerPoint. No photographs, no logos, no watermark.`;
-    const imageResponse=await fetch("https://api.openai.com/v1/images/generations",{
-     method:"POST",
-     headers:{"Content-Type":"application/json",Authorization:`Bearer ${process.env.OPENAI_API_KEY}`},
-     body:JSON.stringify({model:process.env.OPENAI_IMAGE_MODEL||"gpt-image-2.5-flare",prompt:imagePrompt,size:"1024x1536",quality:"medium",output_format:"jpeg"}),
-     signal:AbortSignal.timeout(110000)
-    });
-    const imageData=await imageResponse.json();
-    if(!imageResponse.ok)throw Error(imageData?.error?.message||"OpenAI image generation failed");
-    const b64=imageData?.data?.[0]?.b64_json;
-    if(!b64)throw Error("OpenAI returned no infographic image");
-    const summarySlide=pptx.addSlide();
-    summarySlide.background={color:"F7F1E5"};
-    summarySlide.addText("FINAL REVISION · "+topic,{x:.45,y:.12,w:12.4,h:.28,fontFace:"Arial",fontSize:10,bold:true,color:navy,align:"center",fit:"shrink",margin:0});
-    summarySlide.addImage({data:`data:image/jpeg;base64,${b64}`,x:4.57,y:.48,w:4.2,h:6.3});
-    summarySlide.addText("AI-generated visual summary · Verify critical clinical details with your textbook",{x:1.0,y:7.05,w:11.3,h:.18,fontFace:"Arial",fontSize:7,color:"60788D",align:"center",margin:0});
-    mark(summarySlide);
-   }catch(imageError){
-    console.error("Final infographic generation failed; using text revision fallback:",imageError);
-    const summarySlide=pptx.addSlide();
-    summarySlide.background={color:"F7F1E5"};
-    summarySlide.addText("FINAL REVISION · "+topic,{x:.65,y:.45,w:12,h:.65,fontFace:"Arial",fontSize:24,bold:true,color:navy,fit:"shrink"});
-    summarySlide.addText(slides.slice(-6).map((item,i)=>"• "+clean(item.title)+": "+(item.bullets||[]).slice(0,2).map(v=>clean(v)).join("; ")).join("\n\n"),{x:.9,y:1.45,w:11.5,h:5.4,fontFace:"Arial",fontSize:15,color:"263849",fit:"shrink",valign:"top",breakLine:false,margin:.12});
-    summarySlide.addText("Image summary could not be generated. Review the key points above.",{x:1,y:6.95,w:11,h:.2,fontFace:"Arial",fontSize:8,color:"60788D",align:"center"});
-    mark(summarySlide);
-   }
-  }else{
-   const summarySlide=pptx.addSlide();
-   summarySlide.background={color:"F7F1E5"};
-   summarySlide.addText("FINAL REVISION · "+topic,{x:.65,y:.45,w:12,h:.65,fontFace:"Arial",fontSize:24,bold:true,color:navy,fit:"shrink"});
-   summarySlide.addText(slides.slice(-6).map(item=>"• "+clean(item.title)+": "+(item.bullets||[]).slice(0,2).map(v=>clean(v)).join("; ")).join("\n\n"),{x:.9,y:1.45,w:11.5,h:5.4,fontFace:"Arial",fontSize:15,color:"263849",fit:"shrink",valign:"top",breakLine:false,margin:.12});
-   mark(summarySlide);
-  }
+  // Fast, editable final revision slide. No image-generation API call or extra API key required.
+  const summarySlide=pptx.addSlide();
+  summarySlide.background={color:"F7F1E5"};
+  summarySlide.addText("FINAL REVISION · "+topic,{x:.65,y:.35,w:12,h:.65,fontFace:"Arial",fontSize:24,bold:true,color:navy,fit:"shrink"});
+  const summaryItems=slides.slice(0,8).map(item=>({title:clean(item.title),points:(item.bullets||[]).slice(0,2).map(v=>clean(v))}));
+  summaryItems.forEach((item,i)=>{
+   const col=i%2,row=Math.floor(i/2),x=.65+col*6.15,y=1.25+row*1.35;
+   summarySlide.addShape("roundRect",{x,y,w:5.85,h:1.12,rectRadius:.08,line:{color:"D9E3EA",width:1},fill:{color:"FFFFFF"}});
+   summarySlide.addText(item.title,{x:x+.18,y:y+.12,w:5.5,h:.24,fontFace:"Arial",fontSize:11,bold:true,color:navy,fit:"shrink",margin:0});
+   summarySlide.addText(item.points.map(p=>"• "+p).join("\n"),{x:x+.18,y:y+.43,w:5.5,h:.58,fontFace:"Arial",fontSize:8,color:"263849",fit:"shrink",valign:"top",margin:0});
+  });
+  summarySlide.addText("Quick revision · Check detailed explanations and clinical facts against your textbook",{x:1,y:7.02,w:11,h:.2,fontFace:"Arial",fontSize:8,color:"60788D",align:"center",margin:0});
+  mark(summarySlide);
 
   const out=await pptx.write({outputType:"nodebuffer"});
   const b=Buffer.isBuffer(out)?out:Buffer.from(out as ArrayBuffer);
