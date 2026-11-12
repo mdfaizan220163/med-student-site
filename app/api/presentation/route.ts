@@ -33,7 +33,7 @@ export async function POST(req:NextRequest){
 
   const prompt=`Create a medically accurate MBBS presentation in ${language} about ${topic}. Return only JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Create exactly ${count} slides, 3-5 concise bullets each. Include objectives, core concepts, clinical relevance, summary and review questions. Never invent citations or guidelines.`;
   const result=await generateWithFallback([{role:"user",content:prompt}],"Create accurate medical education slides. Return valid JSON only.",provider,5000);
-  const raw=result.answer.replace(/^\\uFEFF/,"").replace(/^```(?:json)?\\s*/i,"").replace(/\\s*```$/,"");
+  const raw=result.answer.replace(/^\uFEFF/,"").replace(/^```(?:json)?\\s*/i,"").replace(/\\s*```$/,"");
   const outline=JSON.parse(raw) as {title?:string;subtitle?:string;slides?:Slide[]};
   if(!Array.isArray(outline.slides)||!outline.slides.length)throw Error("AI returned an invalid slide outline.");
 
@@ -85,7 +85,7 @@ export async function POST(req:NextRequest){
    const pos=[{x:.8,y:1.5,w:5.6,h:2.3},{x:6.9,y:1.5,w:5.6,h:2.3},{x:.8,y:4.1,w:5.6,h:2.3},{x:6.9,y:4.1,w:5.6,h:2.3}];
    images.slice(slides.length,4).forEach((im,i)=>{
     const p=pos[i];
-    s.addImage({data:`data:${im.type};base64,${im.data}`,x:p.x,y:p.y,w:p.w,h:p.h,sizingContain:true});
+    s.addImage({data:`data:${im.type};base64,${im.data}`,x:p.x,y:p.y,w:p.w,h:p.h});
     s.addText(im.name.slice(0,50),{x:p.x,y:p.y+p.h+.05,w:p.w,h:.2,fontFace:"Arial",fontSize:8,color:"60788D"});
    });
    mark(s);
