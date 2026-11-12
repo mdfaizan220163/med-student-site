@@ -70,10 +70,28 @@ export async function POST(req:NextRequest){
   }
 
   const prompt=`Create a medically accurate MBBS presentation in ${language} about ${topic}. Return only JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Create exactly ${count} slides, 3-5 concise bullets each. Include objectives, core concepts, clinical relevance, summary and review questions. Never invent citations or guidelines.`;
-  const result=await generateWithFallback([{role:"user",content:prompt}],"Create accurate medical education slides. Return valid JSON only.",provider,5000);
-  const raw=result.answer.replace(/^\uFEFF/,"").replace(/^```(?:json)?\s*/i,"").replace(/\s*```$/,"");
-  const outline=JSON.parse(raw) as {title?:string;subtitle?:string;slides?:Slide[]};
-  if(!Array.isArray(outline.slides)||!outline.slides.length)throw Error("AI returned an invalid slide outline.");
+  const system = "Create medically accurate MBBS slides. Return exactly one valid JSON object. Use double quotes for every key and string. No markdown fences, comments, or trailing commas. Required shape: {\"title\":\"...\",\"subtitle\":\"...\",\"slides\":[{\"title\":\"...\",\"bullets\":[\"...\"],\"visual\":\"...\"}]}";
+  let result = await generateWithFallback([{role:"user",content:prompt}], system, provider, 5000);
+  const parseOutline = (answer) => {
+    const cleaned = answer.replace(/^\\uFEFF/,"").replace(/^\x60\x60\x60(?:json)?\\s*/i,"").replace(/\\s*\x60\x60\x60$/,"").trim();
+    const first = cleaned.indexOf("{");
+    const last = cleaned.lastIndexOf("}");
+    if (first < 0 || last <= first) throw Error("AI did not return a JSON presentation outline.");
+    return JSON.parse(cleaned.slice(first,last+1));
+  };
+  let outline;
+  try {
+    outline = parseOutline(result.answer);
+    if (!Array.isArray(outline.slides) || !outline.slides.length) throw Error("Missing slides");
+  } catch (firstError) {
+    result = await generateWithFallback([{role:"user",content:prompt+"\\nYour previous response was invalid JSON. Correct it and return a complete JSON object only. Double-quote every key. No markdown, comments, or trailing commas."}], system, provider, 6000);
+    try {
+      outline = parseOutline(result.answer);
+      if (!Array.isArray(outline.slides) || !outline.slides.length) throw Error("Missing slides");
+    } catch {
+      throw Error("The AI provider returned invalid presentation data twice. Please try again or choose another AI provider.");
+    }
+  }
 
   const pptx=new PptxGenJS();
   pptx.layout="LAYOUT_WIDE";
