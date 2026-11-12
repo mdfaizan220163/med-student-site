@@ -4,6 +4,7 @@ export const runtime="nodejs";
 export const maxDuration=60;
 export async function POST(req:NextRequest){
  try{
+  const supabase=await createClient();const {data:{user}}=await supabase.auth.getUser();if(!user)return NextResponse.json({error:"Please log in to use Study Notebook.",loginRequired:true},{status:401});
   const key=process.env.GEMINI_API_KEY;
   if(!key)return NextResponse.json({error:"Add GEMINI_API_KEY in Vercel to use Study Notebook."},{status:503});
   const form=await req.formData();const file=form.get("file");const question=String(form.get("question")||"").trim();const history=String(form.get("history")||"");
