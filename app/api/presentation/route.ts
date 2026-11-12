@@ -8,6 +8,40 @@ export const maxDuration=60;
 
 type Slide={title:string;bullets:string[];visual?:string};
 type DeckImage={name:string;data:string;type:string;credit:string};
+async function fetchCommonsImage(query:string):Promise<DeckImage|null>{
+ try{
+  const params=new URLSearchParams({
+   action:"query",format:"json",formatversion:"2",generator:"search",
+   gsrsearch:"filetype:bitmap "+query,gsrnamespace:"6",gsrlimit:"6",
+   prop:"imageinfo",iiprop:"url|extmetadata",iiurlwidth:"1200"
+  });
+  const res=await fetch("https://commons.wikimedia.org/w/api.php?"+params.toString(),{
+   headers:{"Accept":"application/json","User-Agent":"FaizanAI-MedicalSlides/1.0 (educational presentation generator)"},
+   signal:AbortSignal.timeout(9000)
+  });
+  if(!res.ok)return null;
+  const body=await res.json();
+  for(const page of (body?.query?.pages||[])){
+   const info=page.imageinfo?.[0];
+   const imageUrl=info?.thumburl||info?.url;
+   if(!imageUrl||!/^https?:\/\//i.test(imageUrl))continue;
+   const img=await fetch(imageUrl,{headers:{"User-Agent":"FaizanAI-MedicalSlides/1.0"},signal:AbortSignal.timeout(9000)});
+   if(!img.ok)continue;
+   const type=(img.headers.get("content-type")||"").split(";")[0].toLowerCase();
+   if(!["image/jpeg","image/png"].includes(type))continue;
+   const bytes=Buffer.from(await img.arrayBuffer());
+   if(!bytes.length||bytes.length>5*1024*1024)continue;
+   const meta=info.extmetadata||{};
+   const plain=(v:unknown)=>typeof v==="object"&&v!==null&&"value" in v?String((v as {value:unknown}).value).replace(/<[^>]*>/g," ").replace(/&amp;/g,"&").trim():"";
+   const artist=plain(meta.Artist)||"Wikimedia Commons contributor";
+   const license=plain(meta.LicenseShortName)||"Open license";
+   const licenseUrl=plain(meta.LicenseUrl);
+   const pageUrl=String(page.title||"").startsWith("File:")?"https://commons.wikimedia.org/wiki/"+encodeURIComponent(String(page.title).replace(/ /g,"_")):"";
+   return {name:String(page.title||"Wikimedia Commons image").replace(/^File:/,"").slice(0,80),data:bytes.toString("base64"),type,credit:[artist,license,licenseUrl,pageUrl].filter(Boolean).join(" · ")};
+  }
+ }catch(e){console.warn("Wikimedia Commons image lookup:",e);}
+ return null;
+}
 async function fetchOpenImage(query:string):Promise<DeckImage|null>{
  try{
   const url="https://api.openverse.org/v1/images/?"+new URLSearchParams({q:query,license_type:"commercial",page_size:"8",mature:"false"});
@@ -112,12 +146,12 @@ export async function POST(req:NextRequest){
   mark(cover);
 
   const slides=outline.slides.slice(0,count);
-  // Prefer user uploads; search Openverse for up to 8 suitable openly licensed images.
+  // Prefer uploads; search Wikimedia Commons first and Openverse as a backup for up to 8 slides.
   const visualImages:(DeckImage|null)[]=slides.map((_:Slide,i:number)=>images[i]?{...images[i],credit:"User-uploaded image"}:null);
   const candidates=slides.map((item:Slide,i:number)=>({item,i})).filter((x:{item:Slide;i:number})=>!visualImages[x.i]).slice(0,8);
   await Promise.all(candidates.map(async({item,i}:{item:Slide;i:number})=>{
    const terms=[item.title,topic].filter(Boolean).join(" ").slice(0,130);
-   visualImages[i]=await fetchOpenImage(terms);
+   visualImages[i]=await fetchCommonsImage(terms)||await fetchOpenImage(terms);
   }));
   for(let i=0;i<slides.length;i++){
    const item=slides[i];
