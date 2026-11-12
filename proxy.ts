@@ -23,8 +23,8 @@ export async function proxy(request: NextRequest) {
     }
   );
 
-  const { data } = await supabase.auth.getClaims();
-  const claims = data?.claims;
+  const claimsResult = await supabase.auth.getClaims();
+  const claims = claimsResult.data === null ? null : claimsResult.data.claims;
 
   const protectedPath = [
     "/ai-studio",
