@@ -17,7 +17,7 @@ export async function askProvider(p:Provider,m:Message[],system:string,maxTokens
  }
  if(p==="claude"){
   const content=m.map(x=>({role:x.role,content:typeof x.content==="string"?[{type:"text",text:x.content}]:x.content.map(y=>y.type==="text"?{type:"text",text:y.text}:{type:"image",source:{type:"base64",media_type:y.image_url.url.match(/^data:(image\/[^;]+);base64,/)?.[1]||"image/jpeg",data:y.image_url.url.split(",")[1]}})}));
-  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":process.env.ANTHROPIC_API_KEY!,"anthropic-version":"2023-06-01"},body:JSON.stringify({model:process.env.CLAUDE_MODEL||"claude-3-7-sonnet-latest",system,messages:content,max_tokens:maxTokens}),signal:AbortSignal.timeout(55000)});
+  const r=await fetch("https://api.anthropic.com/v1/messages",{method:"POST",headers:{"Content-Type":"application/json","x-api-key":process.env.ANTHROPIC_API_KEY!,"anthropic-version":"2023-06-01"},body:JSON.stringify({model:process.env.CLAUDE_MODEL||"claude-sonnet-5-5",system,messages:content,max_tokens:maxTokens}),signal:AbortSignal.timeout(55000)});
   const d=await r.json();if(!r.ok)throw Error(d?.error?.message||"Claude failed");return d?.content?.filter((x:{type:string})=>x.type==="text").map((x:{text:string})=>x.text).join("").trim()||"";
  }
  const content=m.map(x=>({role:x.role,content:typeof x.content==="string"?x.content:x.content.map(y=>y.type==="text"?{type:"text",text:y.text}:{type:"image_url",image_url:{url:y.image_url.url}})}));
