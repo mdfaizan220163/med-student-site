@@ -1,10 +1,15 @@
-export type Provider="gemini"|"groq"|"claude"|"openai";
+export type Provider="deepseek"|"gemini"|"groq"|"claude"|"openai";
 export type Part={type:"text";text:string}|{type:"image_url";image_url:{url:string}};
 export type Message={role:"user"|"assistant";content:string|Part[]};
-export const providerNames:Record<Provider,string>={gemini:"Gemini",groq:"Groq",claude:"Claude",openai:"ChatGPT"};
-export function availableProviders():Provider[]{const a:Provider[]=[];if(process.env.GEMINI_API_KEY)a.push("gemini");if(process.env.GROQ_API_KEY)a.push("groq");if(process.env.ANTHROPIC_API_KEY)a.push("claude");if(process.env.OPENAI_API_KEY)a.push("openai");return a;}
+export const providerNames:Record<Provider,string>={deepseek:"DeepSeek",gemini:"Gemini",groq:"Groq",claude:"Claude",openai:"ChatGPT"};
+export function availableProviders():Provider[]{const a:Provider[]=[];if(process.env.DEEPSEEK_API_KEY)a.push("deepseek");if(process.env.GEMINI_API_KEY)a.push("gemini");if(process.env.GROQ_API_KEY)a.push("groq");if(process.env.ANTHROPIC_API_KEY)a.push("claude");if(process.env.OPENAI_API_KEY)a.push("openai");return a;}
 export async function askProvider(p:Provider,m:Message[],system:string,maxTokens=1800):Promise<string>{
  const plain=m.map(x=>({role:x.role,content:typeof x.content==="string"?x.content:x.content.map(y=>y.type==="text"?y.text:"").join("\n")}));
+ if(p==="deepseek"){
+  if(m.some(x=>Array.isArray(x.content)&&x.content.some(y=>y.type==="image_url")))throw Error("DeepSeek chat mode cannot process images. Choose Gemini, Claude or ChatGPT for image questions.");
+  const r=await fetch("https://api.deepseek.com/chat/completions",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${process.env.DEEPSEEK_API_KEY}`},body:JSON.stringify({model:process.env.DEEPSEEK_MODEL||"deepseek-chat",messages:[{role:"system",content:system},...plain],temperature:.35,max_tokens:maxTokens}),signal:AbortSignal.timeout(55000)});
+  const d=await r.json();if(!r.ok)throw Error(d?.error?.message||"DeepSeek failed");return d?.choices?.[0]?.message?.content?.trim()||"";
+ }
  if(p==="gemini"){
   const contents=m.map(x=>({role:x.role==="assistant"?"model":"user",parts:typeof x.content==="string"?[{text:x.content}]:x.content.map(y=>y.type==="text"?{text:y.text}:{inline_data:{mime_type:y.image_url.url.match(/^data:(image\/[^;]+);base64,/)?.[1]||"image/jpeg",data:y.image_url.url.split(",")[1]}})}));
   const r=await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${process.env.GEMINI_MODEL||"gemini-2.5-flash"}:generateContent`,{method:"POST",headers:{"Content-Type":"application/json","x-goog-api-key":process.env.GEMINI_API_KEY!},body:JSON.stringify({systemInstruction:{parts:[{text:system}]},contents,generationConfig:{temperature:.35,maxOutputTokens:maxTokens}}),signal:AbortSignal.timeout(55000)});
@@ -25,7 +30,7 @@ export async function askProvider(p:Provider,m:Message[],system:string,maxTokens
  const d=await r.json();if(!r.ok)throw Error(d?.error?.message||"OpenAI failed");return d?.choices?.[0]?.message?.content?.trim()||"";
 }
 export async function generateWithFallback(m:Message[],system:string,preferred="auto",maxTokens=1800):Promise<{answer:string;provider:Provider}>{
- const available=availableProviders();const order:Provider[]=preferred==="auto"?["gemini","groq","claude","openai"]:[preferred as Provider,...(["gemini","groq","claude","openai"] as Provider[]).filter(x=>x!==preferred)];
+ const available=availableProviders();const order:Provider[]=preferred==="auto"?["deepseek","gemini","groq","claude","openai"]:[preferred as Provider,...(["deepseek","gemini","groq","claude","openai"] as Provider[]).filter(x=>x!==preferred)];
  const candidates=order.filter(x=>available.includes(x));if(!candidates.length)throw Error("No AI provider API key is configured in Vercel.");
  let last="AI provider request failed.";for(const p of candidates){try{const answer=await askProvider(p,m,system,maxTokens);if(answer)return{answer,provider:p};last=providerNames[p]+" returned an empty response.";}catch(e){last=e instanceof Error?e.message:last;console.error(providerNames[p],last);}}throw Error(last);
 }
