@@ -39,7 +39,7 @@ function addAutoDiagram(s:PptxGenJS.Slide,item:Slide,navy:string){
  s.addText(heading.slice(0,120),{x:8.25,y:2.05,w:4.35,h:.75,fontFace:"Arial",fontSize:14,bold:true,color:navy,fit:"shrink",valign:"middle"});
  points.forEach((p,i)=>{
   const y=3.0+i*1.0;
-  s.addShape(PptxGenJS.ShapeType.roundRect,{x:8.25,y,w:4.35,h:.78,rectRadius:.08,line:{color:"D8E5EF",width:1},fill:{color:i===0?"EEF5FA":"F7FAFC"}});
+  s.addShape("roundRect",{x:8.25,y,w:4.35,h:.78,rectRadius:.08,line:{color:"D8E5EF",width:1},fill:{color:i===0?"EEF5FA":"F7FAFC"}});
   s.addShape(PptxGenJS.ShapeType.ellipse,{x:8.43,y:y+.22,w:.32,h:.32,line:{color:"477EAA"},fill:{color:"477EAA"}});
   s.addText(String(i+1),{x:8.43,y:y+.245,w:.32,h:.2,fontFace:"Arial",fontSize:9,bold:true,color:"FFFFFF",align:"center",margin:0});
   s.addText(p,{x:8.9,y:y+.12,w:3.48,h:.55,fontFace:"Arial",fontSize:10,color:"263849",fit:"shrink",valign:"middle",margin:.04});
@@ -72,14 +72,14 @@ export async function POST(req:NextRequest){
   const prompt=`Create a medically accurate MBBS presentation in ${language} about ${topic}. Return only JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Create exactly ${count} slides, 3-5 concise bullets each. Include objectives, core concepts, clinical relevance, summary and review questions. Never invent citations or guidelines.`;
   const system = "Create medically accurate MBBS slides. Return exactly one valid JSON object. Use double quotes for every key and string. No markdown fences, comments, or trailing commas. Required shape: {\"title\":\"...\",\"subtitle\":\"...\",\"slides\":[{\"title\":\"...\",\"bullets\":[\"...\"],\"visual\":\"...\"}]}";
   let result = await generateWithFallback([{role:"user",content:prompt}], system, provider, 5000);
-  const parseOutline = (answer) => {
+  const parseOutline = (answer: string): {title?:string;subtitle?:string;slides?:Slide[]} => {
     const cleaned = answer.replace(/^\\uFEFF/,"").replace(/^\x60\x60\x60(?:json)?\\s*/i,"").replace(/\\s*\x60\x60\x60$/,"").trim();
     const first = cleaned.indexOf("{");
     const last = cleaned.lastIndexOf("}");
     if (first < 0 || last <= first) throw Error("AI did not return a JSON presentation outline.");
     return JSON.parse(cleaned.slice(first,last+1));
   };
-  let outline;
+  let outline: {title?:string;subtitle?:string;slides?:Slide[]};
   try {
     outline = parseOutline(result.answer);
     if (!Array.isArray(outline.slides) || !outline.slides.length) throw Error("Missing slides");
@@ -113,9 +113,9 @@ export async function POST(req:NextRequest){
 
   const slides=outline.slides.slice(0,count);
   // Prefer user uploads; search Openverse for up to 8 suitable openly licensed images.
-  const visualImages:(DeckImage|null)[]=slides.map((_,i)=>images[i]?{...images[i],credit:"User-uploaded image"}:null);
-  const candidates=slides.map((item,i)=>({item,i})).filter(x=>!visualImages[x.i]).slice(0,8);
-  await Promise.all(candidates.map(async({item,i})=>{
+  const visualImages:(DeckImage|null)[]=slides.map((_:Slide,i:number)=>images[i]?{...images[i],credit:"User-uploaded image"}:null);
+  const candidates=slides.map((item:Slide,i:number)=>({item,i})).filter((x:{item:Slide;i:number})=>!visualImages[x.i]).slice(0,8);
+  await Promise.all(candidates.map(async({item,i}:{item:Slide;i:number})=>{
    const terms=[item.title,topic].filter(Boolean).join(" ").slice(0,130);
    visualImages[i]=await fetchOpenImage(terms);
   }));
@@ -128,7 +128,7 @@ export async function POST(req:NextRequest){
    const bullets=Array.isArray(item.bullets)?item.bullets.slice(0,6):[];
    // Use literal bullet characters rather than PowerPoint bullet metadata.
    // This avoids first-character clipping in some PPTX-to-PDF converters.
-   const text=bullets.map(b=>"•  "+clean(b)).join("\n");
+   const text=bullets.map((b:string)=>"•  "+clean(b)).join("\n");
    const visual=visualImages[i];
    const hasImage=Boolean(visual);
    if(text)s.addText(text,{x:.9,y:1.65,w:hasImage?7.0:7.0,h:4.8,fontFace:"Arial",fontSize:16,color:"263849",breakLine:false,paraSpaceAfter:14,fit:"shrink",margin:.12,valign:"top",lineSpacingMultiple:1.05});
