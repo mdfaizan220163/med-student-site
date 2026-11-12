@@ -10,21 +10,21 @@ type Slide={title:string;bullets:string[];visual?:string};
 type DeckImage={name:string;data:string;type:string;credit:string};
 async function fetchOpenImage(query:string):Promise<DeckImage|null>{
  try{
-  const url="https://api.openverse.org/v1/images/?"+new URLSearchParams({q:query,license_type:"commercial",page_size:"5",mature:"false"});
-  const res=await fetch(url,{headers:{"Accept":"application/json"},signal:AbortSignal.timeout(9000)});
+  const url="https://api.openverse.org/v1/images/?"+new URLSearchParams({q:query,license_type:"commercial",page_size:"8",mature:"false"});
+  const res=await fetch(url,{headers:{"Accept":"application/json"},signal:AbortSignal.timeout(7000)});
   if(!res.ok)return null;
   const body=await res.json();
-  for(const item of (body.results||[]).slice(0,5)){
+  for(const item of (body.results||[]).slice(0,8)){
    if(!item.url||!/^https?:\/\//i.test(item.url))continue;
-   const img=await fetch(item.url,{signal:AbortSignal.timeout(9000)});
+   const img=await fetch(item.url,{signal:AbortSignal.timeout(7000)});
    if(!img.ok)continue;
    const type=(img.headers.get("content-type")||"").split(";")[0];
-   if(!["image/jpeg","image/png","image/webp"].includes(type))continue;
+   if(!["image/jpeg","image/png"].includes(type))continue;
    const bytes=Buffer.from(await img.arrayBuffer());
-   if(!bytes.length||bytes.length>5*1024*1024)continue;
+   if(!bytes.length||bytes.length>4*1024*1024)continue;
    const license=String(item.license||"").toUpperCase();
-   const creator=String(item.creator||"Unknown creator").slice(0,100);
-   const title=String(item.title||"Open-license image").slice(0,100);
+   const creator=String(item.creator||"Unknown creator").slice(0,80);
+   const title=String(item.title||"Open-license image").slice(0,80);
    const page=String(item.foreign_landing_url||item.detail_url||"");
    const licenseUrl=String(item.license_url||"");
    return {name:title,data:bytes.toString("base64"),type,credit:[creator,license,licenseUrl,page].filter(Boolean).join(" · ")};
@@ -32,16 +32,18 @@ async function fetchOpenImage(query:string):Promise<DeckImage|null>{
  }catch(e){console.warn("Openverse image lookup:",e);}
  return null;
 }
-async function generateAiImage(prompt:string):Promise<DeckImage|null>{
- if(!process.env.OPENAI_API_KEY)return null;
- try{
-  const res=await fetch("https://api.openai.com/v1/images/generations",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${process.env.OPENAI_API_KEY}`},body:JSON.stringify({model:process.env.OPENAI_IMAGE_MODEL||"gpt-image-2.5-flare",prompt:"Create a medically accurate educational illustration for an MBBS lecture. No labels, no text, no watermark. Clean textbook-style medical infographic, white background. Subject: "+prompt,size:"1536x1024",quality:"low",output_format:"jpeg",n:1}),signal:AbortSignal.timeout(50000)});
-  const data=await res.json();
-  if(!res.ok)throw Error(data?.error?.message||"Image generation failed");
-  const b64=data?.data?.[0]?.b64_json;
-  if(!b64)return null;
-  return {name:"AI-generated medical illustration",data:b64,type:"image/jpeg",credit:"AI-generated with OpenAI"};
- }catch(e){console.warn("AI image generation:",e);return null;}
+function addAutoDiagram(s:PptxGenJS.Slide,item:Slide,navy:string){
+ const points=(Array.isArray(item.bullets)?item.bullets:[]).slice(0,3).map(x=>clean(x).slice(0,78)).filter(Boolean);
+ const heading=clean(item.visual,"Key concepts");
+ s.addText("KEY CONCEPTS",{x:8.25,y:1.68,w:4.35,h:.3,fontFace:"Arial",fontSize:10,bold:true,color:"477EAA",charSpacing:1.2,fit:"shrink"});
+ s.addText(heading.slice(0,120),{x:8.25,y:2.05,w:4.35,h:.75,fontFace:"Arial",fontSize:14,bold:true,color:navy,fit:"shrink",valign:"mid"});
+ points.forEach((p,i)=>{
+  const y=3.0+i*1.0;
+  s.addShape(PptxGenJS.ShapeType.roundRect,{x:8.25,y,w:4.35,h:.78,rectRadius:.08,line:{color:"D8E5EF",width:1},fill:{color:i===0?"EEF5FA":"F7FAFC"}});
+  s.addShape(PptxGenJS.ShapeType.ellipse,{x:8.43,y:y+.22,w:.32,h:.32,line:{color:"477EAA"},fill:{color:"477EAA"}});
+  s.addText(String(i+1),{x:8.43,y:y+.245,w:.32,h:.2,fontFace:"Arial",fontSize:9,bold:true,color:"FFFFFF",align:"center",margin:0});
+  s.addText(p,{x:8.9,y:y+.12,w:3.48,h:.55,fontFace:"Arial",fontSize:10,color:"263849",fit:"shrink",valign:"mid",margin:.04});
+ });
 }
 const clean=(v:unknown,f="")=>typeof v==="string"?v.replace(/[\u0000-\u001F]/g," ").trim():f;
 
@@ -92,13 +94,13 @@ export async function POST(req:NextRequest){
   mark(cover);
 
   const slides=outline.slides.slice(0,count);
-  // User uploads take priority; otherwise use open-license images, then a limited AI fallback.
-  const visualImages:(DeckImage|null)[]=await Promise.all(slides.map(async(item,i)=>{
-   if(images[i])return {...images[i],credit:"User-uploaded image"};
-   const query=[topic,item.title,item.visual||"",...(item.bullets||[]).slice(0,2)].join(" ").slice(0,220);
-   return await fetchOpenImage(query);
+  // Prefer user uploads; search Openverse for up to 8 suitable openly licensed images.
+  const visualImages:(DeckImage|null)[]=slides.map((_,i)=>images[i]?{...images[i],credit:"User-uploaded image"}:null);
+  const candidates=slides.map((item,i)=>({item,i})).filter(x=>!visualImages[x.i]).slice(0,8);
+  await Promise.all(candidates.map(async({item,i})=>{
+   const terms=[item.title,topic].filter(Boolean).join(" ").slice(0,130);
+   visualImages[i]=await fetchOpenImage(terms);
   }));
-  let aiFallbacks=0;
   for(let i=0;i<slides.length;i++){
    if(!visualImages[i]&&aiFallbacks<3&&process.env.OPENAI_API_KEY){
     visualImages[i]=await generateAiImage([topic,slides[i].title,slides[i].visual||"",...(slides[i].bullets||[]).slice(0,2)].join(". ").slice(0,900));
@@ -117,10 +119,12 @@ export async function POST(req:NextRequest){
    const text=bullets.map(b=>"•  "+clean(b)).join("\n");
    const visual=visualImages[i];
    const hasImage=Boolean(visual);
-   if(text)s.addText(text,{x:.9,y:1.65,w:hasImage?7.0:11.4,h:4.8,fontFace:"Arial",fontSize:hasImage?16:19,color:"263849",breakLine:false,paraSpaceAfter:14,fit:"shrink",margin:.12,valign:"top",lineSpacingMultiple:1.05});
+   if(text)s.addText(text,{x:.9,y:1.65,w:hasImage?7.0:7.0,h:4.8,fontFace:"Arial",fontSize:16,color:"263849",breakLine:false,paraSpaceAfter:14,fit:"shrink",margin:.12,valign:"top",lineSpacingMultiple:1.05});
    if(visual){
     s.addImage({data:`data:${visual.type};base64,${visual.data}`,x:8.25,y:1.75,w:4.35,h:4.15});
     s.addText((visual.name+" · "+visual.credit).slice(0,180),{x:8.25,y:5.98,w:4.35,h:.48,fontFace:"Arial",fontSize:6,color:"60788D",fit:"shrink"});
+   }else{
+    addAutoDiagram(s,item,navy);
    }
    if(item.visual)s.addText("Visual idea: "+clean(item.visual),{x:.9,y:6.55,w:hasImage?7:11.4,h:.25,fontFace:"Arial",fontSize:10,color:"2E6F9E",italic:true,fit:"shrink"});
    s.addText((i+1)+" / "+slides.length,{x:.65,y:7.12,w:.6,h:.18,fontFace:"Arial",fontSize:8,color:"8BA2B7",margin:0});
