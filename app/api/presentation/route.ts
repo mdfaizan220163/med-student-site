@@ -10,7 +10,7 @@ type Slide={title:string;bullets:string[];visual?:string};
 type DeckImage={name:string;data:string;type:string;credit:string};
 const stopWords=new Set(["the","and","for","with","from","into","about","medical","anatomy","diagram","image","illustration","showing","view","of","in","on","to","a","an","assessment","modern","methods"]);
 function relevanceScore(query:string,candidate:string){
- const terms=[...new Set(query.toLowerCase().replace(/[^a-z0-9\\s-]/g," ").split(/\\s+/).filter(w=>w.length>2&&!stopWords.has(w)))];
+ const terms=[...new Set(query.toLowerCase().replace(/[^a-z0-9\s-]/g," ").split(/\s+/).filter(w=>w.length>2&&!stopWords.has(w)))];
  if(!terms.length)return 0;
  const haystack=candidate.toLowerCase().replace(/[^a-z0-9\\s-]/g," ");
  return terms.filter(w=>haystack.includes(w)).length/terms.length;
