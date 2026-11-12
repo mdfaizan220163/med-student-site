@@ -6,8 +6,16 @@ import SignOutButton from "@/app/components/sign-out-button";
 const inter = Inter({ subsets: ["latin"] });
 export const metadata = { title: "MD Faizan | Medical Learning & Resources", description: "Medical notes, study resources, research, and the journey of an MBBS student at IKBFU, Kaliningrad." };
 export default async function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  const supabase = await createClient();
-  const { data: { user } } = await supabase.auth.getUser();
+  const supabaseConfigured = Boolean(
+    process.env.NEXT_PUBLIC_SUPABASE_URL &&
+    process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_KEY
+  );
+  let user = null;
+  if (supabaseConfigured) {
+    const supabase = await createClient();
+    const { data } = await supabase.auth.getUser();
+    user = data.user;
+  }
   return <html lang="en"><body className={inter.className}>
     <header className="site-header"><div className="header-inner">
       <Link href="/" className="brand"><span className="brand-symbol">✳</span><span>MD FAIZAN</span><span className="brand-ai">FAIZAN AI</span></Link>
