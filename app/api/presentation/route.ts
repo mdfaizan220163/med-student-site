@@ -209,7 +209,7 @@ export async function POST(req:NextRequest){
   const mark=(s:PptxGenJS.Slide)=>s.addText("FAIZAN AI",{x:10.15,y:7.13,w:2.45,h:.18,fontFace:"Arial",fontSize:8,bold:true,color:"8BA2B7",align:"right",margin:0});
 
   const slides=(outline.slides??[]).slice(0,count);
-  // Text-only mode: no image downloads, embedded images, or animations.\n\n  const cover=pptx.addSlide();
+  // Text-only mode: no image downloads, embedded images, or animations.\n  const cover=pptx.addSlide();
   cover.background={color:navy};
   cover.addText(clean(outline.title,topic),{x:.95,y:1.7,w:11.0,h:1.5,fontFace:"Arial",fontSize:28,bold:true,color:"FFFFFF",margin:[0.12,0.2,0.12,0.2],fit:"shrink"});
   cover.addText(clean(outline.subtitle,"Medical learning presentation"),{x:1.0,y:3.5,w:10.5,h:.6,fontFace:"Arial",fontSize:16,color:"D5E4F0",margin:.15,fit:"shrink"});
@@ -230,12 +230,6 @@ export async function POST(req:NextRequest){
     // Keep each bullet in one plain-text box to avoid lost characters at rich-text run boundaries.
     s.addText("•  "+clean(bullet),{x:.98,y,w:11.35,h:bulletHeight,fontFace:"Arial",fontSize:17,color:"263849",fit:"shrink",margin:[0.08,0.08,0.08,0.08],valign:"middle"});
    });
-   const visual=visualAssets[i];
-   if(visual){
-    s.addImage({data:`data:${visual.mime};base64,${visual.data}`,x:7.05,y:1.8,w:5.55,h:4.55});
-    s.addText("VISUAL · "+visual.title.slice(0,90),{x:7.1,y:6.42,w:5.4,h:.24,fontFace:"Arial",fontSize:7,color:"60788D",fit:"shrink",margin:0});
-   }else addAutoDiagram(s,item,topic,navy);
-   if(item.visual)s.addText(clean(item.visual),{x:.9,y:6.55,w:5.8,h:.3,fontFace:"Arial",fontSize:9,color:"2E6F9E",italic:true,fit:"shrink"});
    s.addText((i+1)+" / "+slides.length,{x:.65,y:7.12,w:.6,h:.18,fontFace:"Arial",fontSize:8,color:"8BA2B7",margin:0});
    mark(s);
   }
