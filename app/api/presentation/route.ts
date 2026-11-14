@@ -10,7 +10,7 @@ type Slide={title:string;bullets:string[];visual?:string};
 type DeckImage={name:string;data:string;type:string;credit:string;animated:boolean};
 const stopWords=new Set(["the","and","for","with","from","into","about","medical","anatomy","diagram","image","illustration","showing","view","of","in","on","to","a","an","assessment","modern","methods","overview","introduction","principles","clinical","study","lecture"]);
 function tokens(value:string){
- return [...new Set(value.toLowerCase().replace(/[^a-z0-9\\s-]/g," ").split(/\\s+/).filter(w=>w.length>2&&!stopWords.has(w)))];
+ return [...new Set(value.toLowerCase().replace(/[^a-z0-9\s-]/g," ").split(/\s+/).filter(w=>w.length>2&&!stopWords.has(w)))];
 }
 function relevanceScore(query:string,candidate:string){
  const terms=tokens(query), words=new Set(tokens(candidate));
@@ -33,9 +33,9 @@ async function fetchCommonsImage(query:string):Promise<DeckImage|null>{
    const img=await fetch(imageUrl,{signal:AbortSignal.timeout(4500)});
    if(!img.ok)continue;
    const type=(img.headers.get("content-type")||"").split(";")[0].toLowerCase();
-   if(!["image/jpeg","image/png"].includes(type))continue;
+   if(!["image/jpeg","image/png","image/gif"].includes(type))continue;
    const bytes=Buffer.from(await img.arrayBuffer());
-   if(!bytes.length||bytes.length>5*1024*1024)continue;
+   if(!bytes.length||bytes.length>6*1024*1024)continue;\n   const animated=type==="image/gif"&&bytes.toString("latin1").includes("NETSCAPE2.0");
    const artist=plain(meta.Artist)||"Wikimedia Commons contributor",license=plain(meta.LicenseShortName)||"Open license",licenseUrl=plain(meta.LicenseUrl);
    const pageUrl="https://commons.wikimedia.org/wiki/"+encodeURIComponent(String(page.title||"").replace(/ /g,"_"));
    return {name:String(page.title||"Wikimedia Commons image").replace(/^File:/,"").slice(0,80),data:bytes.toString("base64"),type,credit:[artist,license,licenseUrl,pageUrl].filter(Boolean).join(" · "),animated};
