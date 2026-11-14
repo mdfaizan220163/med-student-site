@@ -56,6 +56,16 @@ async function recentPubMed(topic:string):Promise<ResearchRef[]>{
 
 
 type MedicalVisual={data:string;mime:string;title:string;page:string;license:string;artist:string;animated:boolean};
+function getSlideVisualQuery(topic:string,title:string):string{
+ const combined=(topic+" "+title).toLowerCase();
+ if(/\bcell\b/.test(combined)){
+  if(/theory/.test(combined))return "cell theory biology Schleiden Schwann Virchow educational diagram";
+  if(/structure|organell|membrane|nucleus|cytoplasm/.test(combined))return "animal plant eukaryotic cell structure labelled biology diagram organelles";
+  if(/type|prokary|eukary|fundamental/.test(combined))return "prokaryotic versus eukaryotic cell types biology comparison diagram";
+  return "biology cell microscopy animal plant cell educational diagram";
+ }
+ return topic+" "+title+" medical biology educational labelled diagram";
+}
 async function fetchCommonsVisual(query:string,preferGif=false):Promise<MedicalVisual|null>{
   try{
    const search=(preferGif?"filetype:gif ":"")+query;
@@ -192,7 +202,7 @@ export async function POST(req:NextRequest){
     const im=images[index%images.length];
     return {data:im.data,mime:im.type,title:im.name,page:"User-provided image",license:"User supplied",artist:"User supplied",animated:false};
    }
-   if(sources.includes("web"))return (await fetchCommonsVisual(topic+" "+item.title,false))||(await fetchCommonsVisual(topic,false));
+   if(sources.includes("web"))return await fetchCommonsVisual(getSlideVisualQuery(topic,item.title),false);
    return null;
   }));
   // One optional GIF is embedded when Commons has a relevant animated medical asset.
