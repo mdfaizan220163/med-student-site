@@ -145,7 +145,7 @@ export async function POST(req:NextRequest){
   // a successful match with a later empty result.
   const findSlideImage=async(item:Slide):Promise<DeckImage|null>=>{
    const queries=[clean(item.visual),clean(item.title),clean(item.title)+" medical illustration",topic+" "+clean(item.title)]
-    .map(q=>q.trim().replace(/\\s+/g," ").slice(0,100))
+    .map(q=>q.trim().replace(/\s+/g," ").slice(0,100))
     .filter((q,index,all)=>q.length>2&&all.indexOf(q)===index);
    for(const query of queries){
     const found=await fetchCommonsImage(query)||await fetchOpenImage(query);
