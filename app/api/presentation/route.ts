@@ -4,7 +4,7 @@ import {generateWithFallback} from "@/lib/ai-providers";
 import {createClient} from "@/lib/supabase/server";
 
 export const runtime="nodejs";
-export const maxDuration=120;
+export const maxDuration=240;
 
 type Slide={title:string;bullets:string[];visual?:string};
 type DeckImage={name:string;data:string;type:string;credit:string;animated:boolean};
@@ -95,6 +95,22 @@ export async function POST(req:NextRequest){
     } catch {
       throw Error("The AI provider returned invalid presentation data twice. Please try again or choose another AI provider.");
     }
+  }
+
+  // AI quality checkpoint: review and improve the complete outline before PPTX assembly.
+  const reviewPrompt=`Review this MBBS presentation about "${topic}" in ${language}. Check medical accuracy, relevance to the exact topic, logical slide order, duplication, missing high-yield concepts, and whether each visual instruction describes a useful topic-specific medical diagram. Correct errors and improve weak slides. Preserve the requested slide count (${count}) and return ONLY valid JSON in this exact shape: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Keep 3-5 concise bullets per slide. Do not add unsupported facts or citations. ORIGINAL OUTLINE:\\n${JSON.stringify(outline)}`;
+  const reviewSystem="You are a strict MBBS medical educator and presentation quality reviewer. Verify the outline for medical accuracy and relevance, correct issues, remove irrelevant visual ideas, and return only one complete valid JSON object with the required title, subtitle, and slides fields. No markdown.";
+  try {
+    const reviewed=await generateWithFallback([{role:"user",content:reviewPrompt}],reviewSystem,provider,6500);
+    const improved=parseOutline(reviewed.answer);
+    if(Array.isArray(improved.slides)&&improved.slides.length>=Math.min(5,count)){
+      outline={title:clean(improved.title,clean(outline.title,topic)),subtitle:clean(improved.subtitle,clean(outline.subtitle,"Medical learning presentation")),slides:improved.slides.slice(0,count).map((s)=>({title:clean(s.title,"Key concept"),bullets:Array.isArray(s.bullets)?s.bullets.map(x=>clean(x)).filter(Boolean).slice(0,5):[],visual:clean(s.visual,"")}))};
+      console.info("[Faizan AI] AI quality checkpoint passed",reviewed.provider);
+    } else {
+      console.warn("[Faizan AI] Quality checkpoint returned an incomplete outline; using validated draft.");
+    }
+  } catch (reviewError) {
+    console.warn("[Faizan AI] Quality checkpoint unavailable; using validated draft.",reviewError);
   }
 
   const pptx=new PptxGenJS();
