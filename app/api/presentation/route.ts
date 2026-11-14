@@ -182,7 +182,7 @@ export async function POST(req:NextRequest){
     const im=images[index%images.length];
     return {data:im.data,mime:im.type,title:im.name,page:"User-provided image",license:"User supplied",artist:"User supplied",animated:false};
    }
-   if(sources.includes("web"))return await fetchCommonsVisual(topic+" "+item.title,false);
+   if(sources.includes("web"))return (await fetchCommonsVisual(topic+" "+item.title,false))||(await fetchCommonsVisual(topic,false));
    return null;
   }));
   // One optional GIF is embedded when Commons has a relevant animated medical asset.
