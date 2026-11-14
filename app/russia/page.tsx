@@ -212,7 +212,7 @@ export default function RussiaGuidePage() {
                 <li>Never send the full amount at once</li>
               </ul>
               <p>
-                If this section saves even one student from losing their family's money, it was worth writing.
+                If this section saves even one student from losing their family&apos;s money, it was worth writing.
               </p>
             </section>
 
