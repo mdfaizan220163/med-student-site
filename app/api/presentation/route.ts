@@ -8,7 +8,7 @@ export const maxDuration=240;
 
 type Slide={title:string;bullets:string[];visual?:string};
 type DeckImage={name:string;data:string;type:string;credit:string;animated:boolean};
-const clean=(v:unknown,f="")=>typeof v==="string"?v.replace(/[\\u0000-\\u001F]/g," ").trim():f;
+const clean=(v:unknown,f="")=>typeof v==="string"?v.normalize("NFC").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g,"").trim():f;
 function addAutoDiagram(s:PptxGenJS.Slide,item:Slide,topic:string,navy:string){
  const title=clean(item.title);
  const bullets=(Array.isArray(item.bullets)?item.bullets:[]).slice(0,4).map(x=>clean(x).slice(0,100)).filter(Boolean);
@@ -111,7 +111,7 @@ export async function POST(req:NextRequest){
   const system = "Create medically accurate MBBS slides. Return exactly one valid JSON object. Use double quotes for every key and string. No markdown fences, comments, or trailing commas. Required shape: {\"title\":\"...\",\"subtitle\":\"...\",\"slides\":[{\"title\":\"...\",\"bullets\":[\"...\"],\"visual\":\"...\"}]}";
   let result = await generateWithFallback([{role:"user",content:prompt}], system, provider, 5000);
   const parseOutline = (answer: string): {title?:string;subtitle?:string;slides?:Slide[]} => {
-    const cleaned = answer.replace(/^\\uFEFF/,"").replace(/^\x60\x60\x60(?:json)?\\s*/i,"").replace(/\\s*\x60\x60\x60$/,"").trim();
+    const cleaned = answer.replace(/^\uFEFF/,"").replace(/^\x60\x60\x60(?:json)?\s*/i,"").replace(/\s*\x60\x60\x60$/,"").trim();
     const first = cleaned.indexOf("{");
     const last = cleaned.lastIndexOf("}");
     if (first < 0 || last <= first) throw Error("AI did not return a JSON presentation outline.");
@@ -122,7 +122,7 @@ export async function POST(req:NextRequest){
     outline = parseOutline(result.answer);
     if (!Array.isArray(outline.slides) || !outline.slides.length) throw Error("Missing slides");
   } catch (firstError) {
-    result = await generateWithFallback([{role:"user",content:prompt+"\\nYour previous response was invalid JSON. Correct it and return a complete JSON object only. Double-quote every key. No markdown, comments, or trailing commas."}], system, provider, 6000);
+    result = await generateWithFallback([{role:"user",content:prompt+"\nYour previous response was invalid JSON. Correct it and return a complete JSON object only. Double-quote every key. No markdown, comments, or trailing commas."}], system, provider, 6000);
     try {
       outline = parseOutline(result.answer);
       if (!Array.isArray(outline.slides) || !outline.slides.length) throw Error("Missing slides");
