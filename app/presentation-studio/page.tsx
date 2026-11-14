@@ -24,7 +24,7 @@ export default function PresentationStudioPage(){
    setBusy(true);
    try{
      const form=new FormData();
-     form.append("topic",topic.trim());form.append("slides",slides);form.append("language",language);form.append("provider",provider);
+     form.append("topic",topic.trim());form.append("slides",slides);form.append("language",language);form.append("provider",provider);form.append("sources",selected.join(","));
      files.forEach(file=>form.append("images",file));
      const response=await fetch("/api/presentation",{method:"POST",body:form});
      if(!response.ok){const data=await response.json().catch(()=>({}));throw new Error(data.error||"PowerPoint generation failed.");}
