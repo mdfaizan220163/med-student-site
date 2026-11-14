@@ -209,27 +209,7 @@ export async function POST(req:NextRequest){
   const mark=(s:PptxGenJS.Slide)=>s.addText("FAIZAN AI",{x:10.15,y:7.13,w:2.45,h:.18,fontFace:"Arial",fontSize:8,bold:true,color:"8BA2B7",align:"right",margin:0});
 
   const slides=(outline.slides??[]).slice(0,count);
-  // Retrieve topic-matched, openly licensed Commons visuals. Uploaded images are prioritized and distributed across slides.
-  const visualAssets:(MedicalVisual|null)[]=slides.map(()=>null); /* Images are intentionally disabled in text-only mode. */\n  /*const unusedVisualAssets:(MedicalVisual|null)[]=await Promise.all(slides.map(async(item,index)=>{
-   // Use each uploaded image once; never duplicate one unrelated upload across every slide.
-   if(sources.includes("upload")&&images[index]){
-    const im=images[index];
-    return {data:im.data,mime:im.type,title:im.name,page:"User-provided image",license:"User supplied",artist:"User supplied",animated:false};
-   }
-   if(sources.includes("web")||sources.includes("ai")){
-    return await fetchCommonsVisual(topic+" "+item.title,false);
-   }
-   return null;
-  }));
-  */\n  const missingVisuals:string[]=[];
-  if(missingVisuals.length)return NextResponse.json({error:"Could not find a usable medical image for every slide. No incomplete deck was created. Missing: "+missingVisuals.join("; ")+" Enable image search or upload relevant images and try again."},{status:422});
-  // Use silent animated GIFs only. GIF has no audio track, so the deck contains no voice or sound.
-  let animatedAsset:MedicalVisual|null=null;
-  animatedAsset=null;
-
-
-
-  const cover=pptx.addSlide();
+  // Text-only mode: no image downloads, embedded images, or animations.\n\n  const cover=pptx.addSlide();
   cover.background={color:navy};
   cover.addText(clean(outline.title,topic),{x:.95,y:1.7,w:11.0,h:1.5,fontFace:"Arial",fontSize:28,bold:true,color:"FFFFFF",margin:[0.12,0.2,0.12,0.2],fit:"shrink"});
   cover.addText(clean(outline.subtitle,"Medical learning presentation"),{x:1.0,y:3.5,w:10.5,h:.6,fontFace:"Arial",fontSize:16,color:"D5E4F0",margin:.15,fit:"shrink"});
@@ -260,19 +240,6 @@ export async function POST(req:NextRequest){
    mark(s);
   }
 
-  // Keep any additional uploaded images in a clearly labeled gallery slide.
-  if(images.length>slides.length){
-   const s=pptx.addSlide();
-   s.addText("Additional uploaded images",{x:.65,y:.55,w:11.9,h:.7,fontFace:"Arial",fontSize:25,bold:true,color:navy});
-   const pos=[{x:.8,y:1.5,w:5.6,h:2.3},{x:6.9,y:1.5,w:5.6,h:2.3},{x:.8,y:4.1,w:5.6,h:2.3},{x:6.9,y:4.1,w:5.6,h:2.3}];
-   images.slice(slides.length,4).forEach((im,i)=>{
-    const p=pos[i];
-    s.addImage({data:`data:${im.type};base64,${im.data}`,x:p.x,y:p.y,w:p.w,h:p.h});
-    s.addText(im.name.slice(0,50),{x:p.x,y:p.y+p.h+.05,w:p.w,h:.2,fontFace:"Arial",fontSize:8,color:"60788D"});
-   });
-   mark(s);
-  }
-
   // Textbook reference is explicitly identified; no page numbers are fabricated.
   const textbookSlide=pptx.addSlide();textbookSlide.background={color:"FFFFFF"};
   textbookSlide.addText("TEXTBOOK FOUNDATION",{x:.7,y:.55,w:11.8,h:.55,fontFace:"Arial",fontSize:24,bold:true,color:navy,margin:0});
@@ -298,21 +265,6 @@ export async function POST(req:NextRequest){
    }
    mark(rs);
   }
-  const visualCredits:MedicalVisual[]=[];
-  if(visualCredits.length||animatedAsset){
-   const creditSlide=pptx.addSlide();creditSlide.background={color:"FFFFFF"};
-   creditSlide.addText("IMAGE & MEDIA CREDITS",{x:.7,y:.45,w:11.8,h:.5,fontFace:"Arial",fontSize:22,bold:true,color:navy});
-   const credits=[...visualCredits,...(animatedAsset?[animatedAsset]:[])];
-   credits.slice(0,18).forEach((v,i)=>{const y=1.15+i*.31;creditSlide.addText([{text:(i+1)+". "+v.title+" · ",options:{bold:true}},{text:v.license+" · "+v.artist+" · "+(v.animated?"ANIMATED GIF":"image"),options:{}}],{x:.8,y,w:11.6,h:.2,fontFace:"Arial",fontSize:7,color:"263849",fit:"shrink",margin:0});creditSlide.addText(v.page,{x:.8,y:y+.14,w:11.6,h:.13,fontFace:"Arial",fontSize:6,color:"2E6F9E",fit:"shrink",margin:0});});
-   mark(creditSlide);
-  }
-  if(animatedAsset){
-   const mediaSlide=pptx.addSlide();mediaSlide.background={color:"FFFFFF"};
-   mediaSlide.addText("ANIMATED MEDICAL MEDIA",{x:.7,y:.55,w:11.8,h:.55,fontFace:"Arial",fontSize:23,bold:true,color:navy});
-   mediaSlide.addImage({data:`data:image/gif;base64,${animatedAsset.data}`,x:2.1,y:1.55,w:9.1,h:4.9});
-   mediaSlide.addText("Embedded animated GIF · playback depends on PowerPoint version and viewer",{x:1.1,y:6.65,w:11,h:.25,fontFace:"Arial",fontSize:9,color:"60788D",align:"center"});
-   mark(mediaSlide);
-  }
   // Fast, editable final revision slide. No image-generation API call or extra API key required.
   const summarySlide=pptx.addSlide();
   summarySlide.background={color:"F7F1E5"};
@@ -330,7 +282,7 @@ export async function POST(req:NextRequest){
   const out=await pptx.write({outputType:"nodebuffer"});
   const b=Buffer.isBuffer(out)?out:Buffer.from(out as ArrayBuffer);
   const ab=b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength) as ArrayBuffer;
-  return new NextResponse(ab,{headers:{"Content-Type":"application/vnd.openxmlformats-officedocument.presentationml.presentation","Content-Disposition":'attachment; filename="Faizan-AI-Presentation.pptx"',"Cache-Control":"no-store","X-Faizan-AI-Provider":result.provider,"X-Faizan-AI-Image-Count":String(visualAssets.filter(Boolean).length),"X-Faizan-AI-Animated-Count":String(animatedAsset?1:0),"X-Faizan-AI-Slide-Count":String(slides.length)}});
+  return new NextResponse(ab,{headers:{"Content-Type":"application/vnd.openxmlformats-officedocument.presentationml.presentation","Content-Disposition":'attachment; filename="Faizan-AI-Presentation.pptx"',"Cache-Control":"no-store","X-Faizan-AI-Provider":result.provider,"X-Faizan-AI-Image-Count":"0","X-Faizan-AI-Animated-Count":"0","X-Faizan-AI-Slide-Count":String(slides.length)}});
  }catch(e){
   console.error("Presentation:",e);
   return NextResponse.json({error:e instanceof Error?e.message:"PowerPoint generation failed."},{status:502});
