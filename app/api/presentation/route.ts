@@ -140,39 +140,43 @@ export async function POST(req:NextRequest){
   const navy="102B4E";
   const mark=(s:PptxGenJS.Slide)=>s.addText("FAIZAN AI",{x:10.15,y:7.13,w:2.45,h:.18,fontFace:"Arial",fontSize:8,bold:true,color:"8BA2B7",align:"right",margin:0});
 
-  const cover=pptx.addSlide();
-  cover.background={color:navy};
-  cover.addText(clean(outline.title,topic),{x:.8,y:1.7,w:11.3,h:1.5,fontFace:"Arial",fontSize:30,bold:true,color:"FFFFFF",fit:"shrink",breakLine:false});
-  cover.addText(clean(outline.subtitle,"Medical learning presentation"),{x:.85,y:3.5,w:10.8,h:.5,fontFace:"Arial",fontSize:17,color:"D5E4F0"});
-  cover.addText("Prepared with Faizan AI",{x:.85,y:6.65,w:5,h:.3,fontFace:"Arial",fontSize:11,color:"B8CDDF"});
-  mark(cover);
-
   const slides=outline.slides.slice(0,count);
-  // Never assign uploads by order; search each slide independently and reject weak matches.
+  // Search each slide independently using several focused alternatives. Never overwrite
+  // a successful match with a later empty result.
+  const findSlideImage=async(item:Slide):Promise<DeckImage|null>=>{
+   const queries=[clean(item.visual),clean(item.title),clean(item.title)+" medical illustration",topic+" "+clean(item.title)]
+    .map(q=>q.trim().replace(/\\s+/g," ").slice(0,100))
+    .filter((q,index,all)=>q.length>2&&all.indexOf(q)===index);
+   for(const query of queries){
+    const found=await fetchCommonsImage(query)||await fetchOpenImage(query);
+    if(found)return found;
+   }
+   return null;
+  };
   const visualImages:(DeckImage|null)[]=slides.map(()=>null);
-  // Search images with four workers in parallel; avoid long sequential waits.
+  const coverImage: {value:DeckImage|null}={value:null};
   let nextImageIndex=0;
+  const imageJobs=[...slides.map((item,i)=>async()=>{visualImages[i]=await findSlideImage(item);console.info("[Faizan AI] slide image",i+1,visualImages[i]?"found":"diagram fallback");}),
+   async()=>{coverImage.value=await fetchCommonsImage(topic+" medical anatomy illustration")||await fetchOpenImage(topic+" medical illustration");console.info("[Faizan AI] cover image",coverImage.value?"found":"not found");}];
   const imageWorker=async()=>{
    while(true){
     const i=nextImageIndex++;
-    if(i>=slides.length)return;
-    const item=slides[i];
-    const query=[clean(item.title),clean(item.visual)].filter(Boolean).join(" ").slice(0,100);
-    if(!query.trim())continue;
-    visualImages[i]=await fetchCommonsImage(query)||await fetchOpenImage(query);
-    console.info("[Faizan AI] slide image",i+1,visualImages[i]?"found":"diagram fallback");
+    if(i>=imageJobs.length)return;
+    await imageJobs[i]();
    }
   };
-  await Promise.all(Array.from({length:Math.min(4,slides.length)},()=>imageWorker()));
-  for(let i=0;i<slides.length;i++){
-   const item=slides[i];
-   const queries=[clean(item.title),clean(item.visual),clean(item.title)+" medical illustration"].map(q=>q.trim().slice(0,100)).filter((q,index,all)=>q.length>2&&all.indexOf(q)===index);
-   for(const query of queries){
-    visualImages[i]=await fetchCommonsImage(query)||await fetchOpenImage(query);
-    if(visualImages[i])break;
-   }
-   console.info("[Faizan AI] slide image",i+1,visualImages[i]?"relevant match found":"no suitable open-license image",queries);
+  await Promise.all(Array.from({length:Math.min(4,imageJobs.length)},()=>imageWorker()));
+
+  const cover=pptx.addSlide();
+  cover.background={color:navy};
+  cover.addText(clean(outline.title,topic),{x:.8,y:1.7,w:coverImage.value?6.1:11.3,h:1.5,fontFace:"Arial",fontSize:30,bold:true,color:"FFFFFF",fit:"shrink",breakLine:false});
+  cover.addText(clean(outline.subtitle,"Medical learning presentation"),{x:.85,y:3.5,w:coverImage.value?6.0:10.8,h:.5,fontFace:"Arial",fontSize:17,color:"D5E4F0"});
+  if(coverImage.value){
+   cover.addImage({data:`data:${coverImage.value.type};base64,${coverImage.value.data}`,x:7.2,y:1.45,w:5.3,h:4.8});
+   cover.addText((coverImage.value.name+" · "+coverImage.value.credit).slice(0,150),{x:7.2,y:6.35,w:5.3,h:.25,fontFace:"Arial",fontSize:6,color:"D5E4F0",fit:"shrink"});
   }
+  cover.addText("Prepared with Faizan AI",{x:.85,y:6.65,w:5,h:.3,fontFace:"Arial",fontSize:11,color:"B8CDDF"});
+  mark(cover);
   for(let i=0;i<slides.length;i++){
    const item=slides[i];
    const s=pptx.addSlide();
