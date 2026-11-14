@@ -42,7 +42,7 @@ function addAutoDiagram(s:PptxGenJS.Slide,item:Slide,topic:string,navy:string){
 type ResearchRef={title:string;year:string;journal:string;pmid:string;doi:string};
 async function recentPubMed(topic:string):Promise<ResearchRef[]>{
  try{
-  const term=encodeURIComponent(topic+" AND ("last 5 years"[dp])");
+  const term=encodeURIComponent(topic + " AND 2021:2026[dp]");
   const sr=await fetch("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&sort=pub_date&retmax=6&term="+term,{signal:AbortSignal.timeout(10000)});
   if(!sr.ok)return [];
   const ids:string[]=(await sr.json())?.esearchresult?.idlist||[];
