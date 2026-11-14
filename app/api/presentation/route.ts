@@ -54,6 +54,34 @@ async function recentPubMed(topic:string):Promise<ResearchRef[]>{
  }catch(e){console.warn("[Faizan AI] PubMed lookup unavailable",e);return []}
 }
 
+
+type MedicalVisual={data:string;mime:string;title:string;page:string;license:string;artist:string;animated:boolean};
+async function fetchCommonsVisual(query:string,preferGif=false):Promise<MedicalVisual|null>{
+ try{
+  const search=(preferGif?"filetype:gif ":"filetype:bitmap ")+query+" medical";
+  const api="https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch="+encodeURIComponent(search)+"&gsrlimit=8&prop=imageinfo&iiprop=url|extmetadata|size&iiurlwidth=1400&format=json&origin=*";
+  const res=await fetch(api,{headers:{"User-Agent":"FaizanAIMedicalPresentation/1.0 (educational use)"} ,signal:AbortSignal.timeout(12000)});
+  if(!res.ok)return null;
+  const json=await res.json();
+  const pages=Object.values(json?.query?.pages||{}) as any[];
+  for(const p of pages){
+   const info=p?.imageinfo?.[0]; if(!info)continue;
+   const mime=String(info.mime||"");
+   if(preferGif ? mime!=="image/gif" : !["image/jpeg","image/png","image/webp"].includes(mime))continue;
+   const url=preferGif?(info.url||""):(info.thumburl||info.url||"");
+   if(!url||!/^https:\/\//i.test(url))continue;
+   const image=await fetch(url,{signal:AbortSignal.timeout(12000)});
+   if(!image.ok)continue;
+   const bytes=Buffer.from(await image.arrayBuffer());
+   if(bytes.length>(preferGif?4:1.5)*1024*1024||bytes.length<1000)continue;
+   const meta=info.extmetadata||{};
+   const strip=(v:any)=>String(v?.value||"").replace(/<[^>]*>/g," ").replace(/&nbsp;/g," ").replace(/&amp;/g,"&").trim().slice(0,240);
+   return {data:bytes.toString("base64"),mime,title:String(p.title||"Wikimedia Commons file"),page:"https://commons.wikimedia.org/wiki/"+encodeURIComponent(String(p.title||"").replace(/ /g,"_")),license:strip(meta.LicenseShortName)||"See source page for license",artist:strip(meta.Artist)||"Author listed on source page",animated:mime==="image/gif"};
+  }
+ }catch(e){console.warn("[Faizan AI] Commons visual lookup failed",e)}
+ return null;
+}
+
 export async function POST(req:NextRequest){
  try{
   const supabase=await createClient();
@@ -76,6 +104,7 @@ export async function POST(req:NextRequest){
    images.push({name:f.name,data:Buffer.from(await f.arrayBuffer()).toString("base64"),type:f.type});
   }
 
+  const sources=clean(form.get("sources"),"upload,web,ai").split(",").filter(Boolean);
   const research=await recentPubMed(topic);
   const researchContext=research.length?JSON.stringify(research):"No recent PubMed records were retrieved; do not invent recent research.";
   const prompt=`Create a medically accurate MBBS presentation in ${language} about ${topic}. Use the relevant standard textbook for established foundational knowledge. Recent PubMed records retrieved for this topic: ${researchContext}. Where relevant, explain recent findings accurately and distinguish them from established textbook knowledge. Mark every research-derived statement with the exact bold prefix **RECENT RESEARCH**. Do not infer findings from a title alone; only describe what the cited record supports. Return only JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Create exactly ${count} slides, 3-5 concise bullets each. Include objectives, core concepts, clinical relevance, summary and review questions. Never invent citations or guidelines.`;
@@ -140,7 +169,20 @@ export async function POST(req:NextRequest){
   const mark=(s:PptxGenJS.Slide)=>s.addText("FAIZAN AI",{x:10.15,y:7.13,w:2.45,h:.18,fontFace:"Arial",fontSize:8,bold:true,color:"8BA2B7",align:"right",margin:0});
 
   const slides=(outline.slides??[]).slice(0,count);
-  // Visual and animation assets are added in the next implementation pass; keep generated diagrams until those assets are validated.
+  // Retrieve topic-matched, openly licensed Commons visuals. Uploaded images are prioritized and distributed across slides.
+  const visualAssets:(MedicalVisual|null)[]=await Promise.all(slides.map(async(item,index)=>{
+   if(sources.includes("upload")&&images[index%Math.max(images.length,1)]){
+    const im=images[index%images.length];
+    return {data:im.data,mime:im.type,title:im.name,page:"User-provided image",license:"User supplied",artist:"User supplied",animated:false};
+   }
+   if(sources.includes("web"))return await fetchCommonsVisual(topic+" "+item.title,false);
+   return null;
+  }));
+  // One optional GIF is embedded when Commons has a relevant animated medical asset.
+  let animatedAsset:MedicalVisual|null=null;
+  if(sources.includes("web"))animatedAsset=await fetchCommonsVisual(topic+" "+clean(slides[0]?.title),true);
+
+
 
   const cover=pptx.addSlide();
   cover.background={color:navy};
@@ -160,7 +202,11 @@ export async function POST(req:NextRequest){
    // This avoids first-character clipping in some PPTX-to-PDF converters.
    const text=bullets.map((b:string)=>"•  "+clean(b)).join("\n");
    if(text)s.addText(text,{x:.75,y:1.72,w:5.8,h:4.85,fontFace:"Arial",fontSize:15,color:"263849",breakLine:false,paraSpaceAfter:12,fit:"shrink",margin:.12,valign:"top",lineSpacingMultiple:1.05});
-   addAutoDiagram(s,item,topic,navy);
+   const visual=visualAssets[i];
+   if(visual){
+    s.addImage({data:`data:${visual.mime};base64,${visual.data}`,x:7.05,y:1.8,w:5.55,h:4.55, sizing:"contain"});
+    s.addText("VISUAL · "+visual.title.slice(0,90),{x:7.1,y:6.42,w:5.4,h:.24,fontFace:"Arial",fontSize:7,color:"60788D",fit:"shrink",margin:0});
+   }else addAutoDiagram(s,item,topic,navy);
    if(item.visual)s.addText(clean(item.visual),{x:.9,y:6.55,w:5.8,h:.3,fontFace:"Arial",fontSize:9,color:"2E6F9E",italic:true,fit:"shrink"});
    s.addText((i+1)+" / "+slides.length,{x:.65,y:7.12,w:.6,h:.18,fontFace:"Arial",fontSize:8,color:"8BA2B7",margin:0});
    mark(s);
@@ -188,6 +234,21 @@ export async function POST(req:NextRequest){
    research.forEach((p,i)=>{const y=1.7+i*1.0;rs.addText([{text:"RECENT RESEARCH · ",options:{bold:true,color:"9B3D26"}},{text:p.title,options:{bold:true,color:navy}}],{x:.8,y,w:11.7,h:.38,fontFace:"Arial",fontSize:11,fit:"shrink",margin:0});rs.addText([p.journal,p.year,p.doi?"DOI: "+p.doi:"PMID: "+p.pmid].filter(Boolean).join(" · "),{x:.82,y:y+.4,w:11.4,h:.22,fontFace:"Arial",fontSize:8,color:"60788D",margin:0});rs.addText("https://pubmed.ncbi.nlm.nih.gov/"+p.pmid+"/",{x:.82,y:y+.64,w:11.4,h:.2,fontFace:"Arial",fontSize:8,color:"2E6F9E",margin:0});});
    mark(rs);
   }
+  const visualCredits=visualAssets.filter((v):v is MedicalVisual=>!!v);
+  if(visualCredits.length||animatedAsset){
+   const creditSlide=pptx.addSlide();creditSlide.background={color:"FFFFFF"};
+   creditSlide.addText("IMAGE & MEDIA CREDITS",{x:.7,y:.45,w:11.8,h:.5,fontFace:"Arial",fontSize:22,bold:true,color:navy});
+   const credits=[...visualCredits,...(animatedAsset?[animatedAsset]:[])];
+   credits.slice(0,18).forEach((v,i)=>{const y=1.15+i*.31;creditSlide.addText([{text:(i+1)+". "+v.title+" · ",options:{bold:true}},{text:v.license+" · "+v.artist+" · "+(v.animated?"ANIMATED GIF":"image"),options:{}}],{x:.8,y,w:11.6,h:.2,fontFace:"Arial",fontSize:7,color:"263849",fit:"shrink",margin:0});creditSlide.addText(v.page,{x:.8,y:y+.14,w:11.6,h:.13,fontFace:"Arial",fontSize:6,color:"2E6F9E",fit:"shrink",margin:0});});
+   mark(creditSlide);
+  }
+  if(animatedAsset){
+   const mediaSlide=pptx.addSlide();mediaSlide.background={color:"FFFFFF"};
+   mediaSlide.addText("ANIMATED MEDICAL MEDIA",{x:.7,y:.55,w:11.8,h:.55,fontFace:"Arial",fontSize:23,bold:true,color:navy});
+   mediaSlide.addImage({data:`data:image/gif;base64,${animatedAsset.data}`,x:2.1,y:1.55,w:9.1,h:4.9,sizing:"contain"});
+   mediaSlide.addText("Embedded animated GIF · Play in PowerPoint Slide Show",{x:1.1,y:6.65,w:11,h:.25,fontFace:"Arial",fontSize:9,color:"60788D",align:"center"});
+   mark(mediaSlide);
+  }
   // Fast, editable final revision slide. No image-generation API call or extra API key required.
   const summarySlide=pptx.addSlide();
   summarySlide.background={color:"F7F1E5"};
@@ -205,7 +266,7 @@ export async function POST(req:NextRequest){
   const out=await pptx.write({outputType:"nodebuffer"});
   const b=Buffer.isBuffer(out)?out:Buffer.from(out as ArrayBuffer);
   const ab=b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength) as ArrayBuffer;
-  return new NextResponse(ab,{headers:{"Content-Type":"application/vnd.openxmlformats-officedocument.presentationml.presentation","Content-Disposition":'attachment; filename="Faizan-AI-Presentation.pptx"',"Cache-Control":"no-store","X-Faizan-AI-Provider":result.provider,"X-Faizan-AI-Image-Count":"0","X-Faizan-AI-Animated-Count":"0","X-Faizan-AI-Slide-Count":String(slides.length)}});
+  return new NextResponse(ab,{headers:{"Content-Type":"application/vnd.openxmlformats-officedocument.presentationml.presentation","Content-Disposition":'attachment; filename="Faizan-AI-Presentation.pptx"',"Cache-Control":"no-store","X-Faizan-AI-Provider":result.provider,"X-Faizan-AI-Image-Count":String(visualAssets.filter(Boolean).length),"X-Faizan-AI-Animated-Count":String(animatedAsset?1:0),"X-Faizan-AI-Slide-Count":String(slides.length)}});
  }catch(e){
   console.error("Presentation:",e);
   return NextResponse.json({error:e instanceof Error?e.message:"PowerPoint generation failed."},{status:502});
