@@ -211,7 +211,7 @@ export async function POST(req:NextRequest){
    const bullets=Array.isArray(item.bullets)?item.bullets.slice(0,5):[];
    // Use literal bullet characters rather than PowerPoint bullet metadata.
    // This avoids first-character clipping in some PPTX-to-PDF converters.
-   const runs:PptxGenJS.TextProps[]=[];
+   const runs:any[]=[];
    bullets.forEach((b:string,index:number)=>{runs.push({text:"•  "});const value=clean(b);const tag="RECENT RESEARCH";if(value.includes(tag)){const parts=value.split(tag);runs.push({text:parts[0]});runs.push({text:tag,options:{bold:true,color:"9B3D26"}});if(parts.slice(1).join(tag))runs.push({text:parts.slice(1).join(tag)});}else runs.push({text:value});if(index<bullets.length-1)runs.push({text:"\n"});});
    if(runs.length)s.addText(runs,{x:.75,y:1.72,w:5.8,h:4.85,fontFace:"Arial",fontSize:15,color:"263849",breakLine:false,paraSpaceAfter:12,fit:"shrink",margin:.12,valign:"top",lineSpacingMultiple:1.05});
    const visual=visualAssets[i];
