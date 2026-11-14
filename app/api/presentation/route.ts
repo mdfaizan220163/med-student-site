@@ -28,14 +28,16 @@ async function fetchCommonsImage(query:string):Promise<DeckImage|null>{
    const plain=(v:unknown)=>typeof v==="object"&&v!==null&&"value" in v?String((v as {value:unknown}).value).replace(/<[^>]*>/g," ").replace(/&amp;/g,"&").trim():"";
    const candidate=[String(page.title||""),plain(meta.ImageDescription),plain(meta.ObjectName)].join(" ");
    if(relevanceScore(query,candidate)<0.2)continue;
-   const originalUrl=typeof info?.url==="string"?info.url:"";\n   const imageUrl=originalUrl.toLowerCase().includes(".gif")?originalUrl:(info?.thumburl||info?.url);
+   const originalUrl=typeof info?.url==="string"?info.url:"";
+   const imageUrl=originalUrl.toLowerCase().includes(".gif")?originalUrl:(info?.thumburl||info?.url);
    if(typeof imageUrl!=="string"||!(imageUrl.startsWith("https://")||imageUrl.startsWith("http://")))continue;
    const img=await fetch(imageUrl,{signal:AbortSignal.timeout(4500)});
    if(!img.ok)continue;
    const type=(img.headers.get("content-type")||"").split(";")[0].toLowerCase();
    if(!["image/jpeg","image/png","image/gif"].includes(type))continue;
    const bytes=Buffer.from(await img.arrayBuffer());
-   if(!bytes.length||bytes.length>6*1024*1024)continue;\n   const animated=type==="image/gif"&&bytes.toString("latin1").includes("NETSCAPE2.0");
+   if(!bytes.length||bytes.length>6*1024*1024)continue;
+   const animated=type==="image/gif"&&bytes.toString("latin1").includes("NETSCAPE2.0");
    const artist=plain(meta.Artist)||"Wikimedia Commons contributor",license=plain(meta.LicenseShortName)||"Open license",licenseUrl=plain(meta.LicenseUrl);
    const pageUrl="https://commons.wikimedia.org/wiki/"+encodeURIComponent(String(page.title||"").replace(/ /g,"_"));
    return {name:String(page.title||"Wikimedia Commons image").replace(/^File:/,"").slice(0,80),data:bytes.toString("base64"),type,credit:[artist,license,licenseUrl,pageUrl].filter(Boolean).join(" · "),animated};
