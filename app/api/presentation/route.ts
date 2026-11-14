@@ -39,18 +39,28 @@ function addAutoDiagram(s:PptxGenJS.Slide,item:Slide,topic:string,navy:string){
  }
 }
 
-type ResearchRef={title:string;year:string;journal:string;pmid:string;doi:string};
+type ResearchRef={title:string;year:string;journal:string;pmid:string;doi:string;abstract:string};
 async function recentPubMed(topic:string):Promise<ResearchRef[]>{
  try{
-  const term=encodeURIComponent(topic + " AND 2021:2026[dp]");
+  const year=new Date().getFullYear();\n  const term=encodeURIComponent(topic + " AND "+(year-4)+":"+year+"[dp]");
   const sr=await fetch("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&sort=pub_date&retmax=6&term="+term,{signal:AbortSignal.timeout(10000)});
   if(!sr.ok)return [];
   const ids:string[]=(await sr.json())?.esearchresult?.idlist||[];
   if(!ids.length)return [];
-  const er=await fetch("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id="+ids.join(","),{signal:AbortSignal.timeout(10000)});
-  if(!er.ok)return [];
-  const data=await er.json();
-  return ids.map(id=>data?.result?.[id]).filter(Boolean).map((p:any)=>({title:String(p.title||"").replace(/<[^>]*>/g,"").slice(0,180),year:String(p.pubdate||"").match(/20\d{2}/)?.[0]||"",journal:String(p.fulljournalname||p.source||"").slice(0,80),pmid:String(p.uid||""),doi:String((p.articleids||[]).find((a:any)=>a.idtype==="doi")?.value||"")})).filter((p:ResearchRef)=>p.title&&p.pmid).slice(0,5);
+  const [summaryRes,abstractRes]=await Promise.all([
+   fetch("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id="+ids.join(","),{signal:AbortSignal.timeout(12000)}),
+   fetch("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/efetch.fcgi?db=pubmed&retmode=xml&id="+ids.join(","),{signal:AbortSignal.timeout(12000)})
+  ]);
+  if(!summaryRes.ok)return [];
+  const data=await summaryRes.json();
+  const xml=abstractRes.ok?await abstractRes.text():"";
+  const abstractById=new Map<string,string>();
+  for(const block of xml.match(/<PubmedArticle>[\s\S]*?<\/PubmedArticle>/g)||[]){
+   const id=block.match(/<PMID[^>]*>(\d+)<\/PMID>/)?.[1]||"";
+   const parts=[...block.matchAll(/<AbstractText(?:[^>]*)>([\s\S]*?)<\/AbstractText>/g)].map(m=>m[1].replace(/<[^>]+>/g," ").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/\s+/g," ").trim());
+   if(id&&parts.length)abstractById.set(id,parts.join(" "));
+  }
+  return ids.map(id=>data?.result?.[id]).filter(Boolean).map((p:any)=>({title:String(p.title||"").replace(/<[^>]*>/g,"").slice(0,180),year:String(p.pubdate||"").match(/20\d{2}/)?.[0]||"",journal:String(p.fulljournalname||p.source||"").slice(0,80),pmid:String(p.uid||""),doi:String((p.articleids||[]).find((a:any)=>a.idtype==="doi")?.value||""),abstract:abstractById.get(id)||""})).filter((p:ResearchRef)=>p.title&&p.pmid&&p.abstract).slice(0,5);
  }catch(e){console.warn("[Faizan AI] PubMed lookup unavailable",e);return []}
 }
 
@@ -106,7 +116,7 @@ export async function POST(req:NextRequest){
 
   const sources=clean(form.get("sources"),"upload,web,ai").split(",").filter(Boolean);
   const research=await recentPubMed(topic);
-  const researchContext=research.length?JSON.stringify(research):"No recent PubMed records were retrieved; do not invent recent research.";
+  const researchContext=research.length?JSON.stringify(research.map(({title,year,journal,pmid,doi,abstract})=>({title,year,journal,pmid,doi,abstract}))):"No recent PubMed abstracts were retrieved; do not invent recent research.";
   const prompt=`Create a medically accurate MBBS presentation in ${language} about ${topic}. Use the relevant standard textbook for established foundational knowledge. Recent PubMed records retrieved for this topic: ${researchContext}. Where relevant, explain recent findings accurately and distinguish them from established textbook knowledge. Mark every research-derived statement with the exact bold prefix **RECENT RESEARCH**. Do not infer findings from a title alone; only describe what the cited record supports. Return only JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Create exactly ${count} slides, 3-5 concise bullets each. Include objectives, core concepts, clinical relevance, summary and review questions. Never invent citations or guidelines.`;
   const system = "Create medically accurate MBBS slides. Return exactly one valid JSON object. Use double quotes for every key and string. No markdown fences, comments, or trailing commas. Required shape: {\"title\":\"...\",\"subtitle\":\"...\",\"slides\":[{\"title\":\"...\",\"bullets\":[\"...\"],\"visual\":\"...\"}]}";
   let result = await generateWithFallback([{role:"user",content:prompt}], system, provider, 5000);
@@ -197,7 +207,7 @@ export async function POST(req:NextRequest){
    s.background={color:"FFFFFF"};
    s.addShape("rect",{x:0,y:0,w:13.333,h:.16,line:{color:navy},fill:{color:navy}});
    s.addText(clean(item.title,"Section "+(i+1)),{x:.65,y:.55,w:11.9,h:.72,fontFace:"Arial",fontSize:25,bold:true,color:navy,fit:"shrink"});
-   const bullets=Array.isArray(item.bullets)?item.bullets.slice(0,3):[];
+   const bullets=Array.isArray(item.bullets)?item.bullets.slice(0,5):[];
    // Use literal bullet characters rather than PowerPoint bullet metadata.
    // This avoids first-character clipping in some PPTX-to-PDF converters.
    const text=bullets.map((b:string)=>"•  "+clean(b)).join("\n");
