@@ -151,24 +151,35 @@ export async function POST(req:NextRequest){
   const reviewPrompt=`Act as the final medical quality-control reviewer for an MBBS teaching presentation about "${topic}" in ${language}. Review EVERY slide. Check: (1) factual medical accuracy and terminology, (2) direct relevance to the requested topic, (3) correct mechanisms, sequences and relationships, (4) missing essential high-yield concepts, (5) duplication and logical order, (6) useful and medically relevant visual/diagram instructions. Correct errors; remove irrelevant content; improve weak slides. Preserve exactly ${count} slides. Return ONLY valid JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Each slide must have 3-5 concise bullets. Do not invent citations, references, guidelines or facts. If a fact is uncertain, phrase it cautiously. DRAFT TO REVIEW:\n${JSON.stringify(outline)}`;
   const reviewSystem="You are the mandatory final quality-control reviewer for medical education slides. Be strict, verify each statement for standard MBBS-level medical accuracy, correct mistakes, remove irrelevant content and ensure every visual instruction matches the topic. Return one complete JSON object only, with exactly the requested slide count and required fields. No markdown.";
   let qualityCheckpointPassed=false;
-  try {
-    const reviewed=await generateWithFallback([{role:"user",content:reviewPrompt}],reviewSystem,provider,7000);
+  let reviewProvider=provider;
+  let lastReviewError:unknown=null;
+  // Retry once with explicit JSON-repair instructions; never finalize an unreviewed deck.
+  for(let attempt=0;attempt<2&&!qualityCheckpointPassed;attempt++){
+   try{
+    const retryInstruction=attempt===0?"":"\\nYour previous review response was invalid or incomplete. Return ONLY one complete valid JSON object, no markdown. Include exactly "+count+" slides, each with a title and at least 3 concise bullet strings.";
+    const reviewed=await generateWithFallback([{role:"user",content:reviewPrompt+retryInstruction}],reviewSystem,reviewProvider,7000);
     const improved=parseOutline(reviewed.answer);
     if(!Array.isArray(improved.slides)||improved.slides.length!==count) {
-      throw new Error(`Review returned ${improved.slides?.length??0} slides; expected exactly ${count}.`);
+     throw new Error(`Review returned ${improved.slides?.length??0} slides; expected exactly ${count}.`);
     }
     const checkedSlides=improved.slides.map((s,index)=>{
-      const title=clean(s?.title);
-      const bullets=Array.isArray(s?.bullets)?s.bullets.map(x=>clean(x)).filter(Boolean).slice(0,5):[];
-      if(!title||bullets.length<3)throw new Error(`Slide ${index+1} is incomplete after review.`);
-      return {title,bullets,visual:clean(s.visual,"Create a topic-specific labeled medical diagram.")};
+     const title=clean(s?.title);
+     const bullets=Array.isArray(s?.bullets)?s.bullets.map(x=>clean(x)).filter(Boolean).slice(0,5):[];
+     if(!title||bullets.length<3)throw new Error(`Slide ${index+1} is incomplete after review.`);
+     return {title,bullets,visual:clean(s.visual,"Create a topic-specific labeled medical diagram.")};
     });
     outline={title:clean(improved.title,clean(outline.title,topic)),subtitle:clean(improved.subtitle,clean(outline.subtitle,"Medical learning presentation")),slides:checkedSlides};
+    reviewProvider=reviewed.provider;
     qualityCheckpointPassed=true;
-    console.info("[Faizan AI] Mandatory medical quality checkpoint passed",reviewed.provider);
-  } catch (reviewError) {
-    console.error("[Faizan AI] Mandatory quality checkpoint failed",reviewError);
-    throw new Error("The medical quality checkpoint could not be completed. Your PowerPoint was not finalized. Please try again or select another AI provider.");
+    console.info("[Faizan AI] Mandatory medical quality checkpoint passed",reviewed.provider,"attempt",attempt+1);
+   }catch(reviewError){
+    lastReviewError=reviewError;
+    console.error("[Faizan AI] Quality checkpoint attempt",attempt+1,"failed",reviewError);
+   }
+  }
+  if(!qualityCheckpointPassed){
+   const detail=lastReviewError instanceof Error?lastReviewError.message:"Unknown review error";
+   throw new Error("The medical quality checkpoint failed after 2 attempts: "+detail+". No PowerPoint was finalized. Try again or choose another AI provider.");
   }
   if(!qualityCheckpointPassed)throw new Error("The medical quality checkpoint was not passed. Presentation finalization stopped.");
 
