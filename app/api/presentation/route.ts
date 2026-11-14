@@ -188,9 +188,10 @@ export async function POST(req:NextRequest){
     const im=images[index%images.length];
     return {data:im.data,mime:im.type,title:im.name,page:"User-provided image",license:"User supplied",artist:"User supplied",animated:false};
    }
-   if(sources.includes("web"))return await fetchCommonsVisual(topic+" "+item.title,false);
-   return null;
+   return await fetchCommonsVisual(topic+" "+item.title,false);
   }));
+  const missingVisuals=visualAssets.map((v,i)=>v?null:(i+1)+": "+slides[i].title).filter(Boolean);
+  if(missingVisuals.length)return NextResponse.json({error:"Could not find a usable medical image for every slide. No incomplete deck was created. Missing: "+missingVisuals.join("; ")+" Enable image search or upload relevant images and try again."},{status:422});
   // Use silent animated GIFs only. GIF has no audio track, so the deck contains no voice or sound.
   let animatedAsset:MedicalVisual|null=null;
   if(sources.includes("web"))animatedAsset=await fetchCommonsVisual(topic+" "+clean(slides[0]?.title),true);
@@ -199,8 +200,8 @@ export async function POST(req:NextRequest){
 
   const cover=pptx.addSlide();
   cover.background={color:navy};
-  cover.addText(clean(outline.title,topic),{x:.8,y:1.7,w:11.3,h:1.5,fontFace:"Arial",fontSize:30,bold:true,color:"FFFFFF",fit:"shrink",breakLine:false});
-  cover.addText(clean(outline.subtitle,"Medical learning presentation"),{x:.85,y:3.5,w:10.8,h:.5,fontFace:"Arial",fontSize:17,color:"D5E4F0"});
+  cover.addText(clean(outline.title,topic),{x:.95,y:1.7,w:11.0,h:1.5,fontFace:"Arial",fontSize:28,bold:true,color:"FFFFFF",margin:{left:.2,right:.2,top:.12,bottom:.12},fit:"shrink",valign:"mid"});
+  cover.addText(clean(outline.subtitle,"Medical learning presentation"),{x:1.0,y:3.5,w:10.5,h:.6,fontFace:"Arial",fontSize:16,color:"D5E4F0",margin:.15,fit:"shrink"});
 
   cover.addText("Prepared with Faizan AI",{x:.85,y:6.65,w:5,h:.3,fontFace:"Arial",fontSize:11,color:"B8CDDF"});
   mark(cover);
@@ -209,13 +210,13 @@ export async function POST(req:NextRequest){
    const s=pptx.addSlide();
    s.background={color:"FFFFFF"};
    s.addShape("rect",{x:0,y:0,w:13.333,h:.16,line:{color:navy},fill:{color:navy}});
-   s.addText(clean(item.title,"Section "+(i+1)),{x:.65,y:.55,w:11.9,h:.72,fontFace:"Arial",fontSize:25,bold:true,color:navy,fit:"shrink"});
+   s.addText(clean(item.title,"Section "+(i+1)),{x:.95,y:.55,w:11.4,h:.82,fontFace:"Arial",fontSize:23,bold:true,color:navy,margin:{left:.2,right:.2,top:.12,bottom:.12},fit:"shrink",valign:"mid"});
    const bullets=Array.isArray(item.bullets)?item.bullets.slice(0,5):[];
    // Use literal bullet characters rather than PowerPoint bullet metadata.
    // This avoids first-character clipping in some PPTX-to-PDF converters.
    const runs:any[]=[];
    bullets.forEach((b:string,index:number)=>{runs.push({text:"•  "});const value=clean(b);const tag="RECENT RESEARCH";if(value.includes(tag)){const parts=value.split(tag);runs.push({text:parts[0]});runs.push({text:tag,options:{bold:true,color:"9B3D26"}});if(parts.slice(1).join(tag))runs.push({text:parts.slice(1).join(tag)});}else runs.push({text:value});if(index<bullets.length-1)runs.push({text:"\n"});});
-   if(runs.length)s.addText(runs,{x:.75,y:1.72,w:5.8,h:4.85,fontFace:"Arial",fontSize:15,color:"263849",breakLine:false,paraSpaceAfter:12,fit:"shrink",margin:.12,valign:"top",lineSpacingMultiple:1.05});
+   if(runs.length)s.addText(runs,{x:.95,y:1.72,w:5.55,h:4.85,fontFace:"Arial",fontSize:14,color:"263849",paraSpaceAfter:12,fit:"shrink",margin:{left:.2,right:.18,top:.15,bottom:.15},valign:"top",lineSpacingMultiple:1.05});
    const visual=visualAssets[i];
    if(visual){
     s.addImage({data:`data:${visual.mime};base64,${visual.data}`,x:7.05,y:1.8,sizing:{type:"contain",w:5.55,h:4.55}});
