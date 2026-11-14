@@ -204,7 +204,7 @@ export async function POST(req:NextRequest){
    if(text)s.addText(text,{x:.75,y:1.72,w:5.8,h:4.85,fontFace:"Arial",fontSize:15,color:"263849",breakLine:false,paraSpaceAfter:12,fit:"shrink",margin:.12,valign:"top",lineSpacingMultiple:1.05});
    const visual=visualAssets[i];
    if(visual){
-    s.addImage({data:`data:${visual.mime};base64,${visual.data}`,x:7.05,y:1.8,w:5.55,h:4.55, sizing:"contain"});
+    s.addImage({data:`data:${visual.mime};base64,${visual.data}`,x:7.05,y:1.8,w:5.55,h:4.55, sizing:{type:"contain",w:5.55,h:4.55}});
     s.addText("VISUAL · "+visual.title.slice(0,90),{x:7.1,y:6.42,w:5.4,h:.24,fontFace:"Arial",fontSize:7,color:"60788D",fit:"shrink",margin:0});
    }else addAutoDiagram(s,item,topic,navy);
    if(item.visual)s.addText(clean(item.visual),{x:.9,y:6.55,w:5.8,h:.3,fontFace:"Arial",fontSize:9,color:"2E6F9E",italic:true,fit:"shrink"});
@@ -245,7 +245,7 @@ export async function POST(req:NextRequest){
   if(animatedAsset){
    const mediaSlide=pptx.addSlide();mediaSlide.background={color:"FFFFFF"};
    mediaSlide.addText("ANIMATED MEDICAL MEDIA",{x:.7,y:.55,w:11.8,h:.55,fontFace:"Arial",fontSize:23,bold:true,color:navy});
-   mediaSlide.addImage({data:`data:image/gif;base64,${animatedAsset.data}`,x:2.1,y:1.55,w:9.1,h:4.9,sizing:"contain"});
+   mediaSlide.addImage({data:`data:image/gif;base64,${animatedAsset.data}`,x:2.1,y:1.55,w:9.1,h:4.9,sizing:{type:"contain",w:9.1,h:4.9}});
    mediaSlide.addText("Embedded animated GIF · Play in PowerPoint Slide Show",{x:1.1,y:6.65,w:11,h:.25,fontFace:"Arial",fontSize:9,color:"60788D",align:"center"});
    mark(mediaSlide);
   }
