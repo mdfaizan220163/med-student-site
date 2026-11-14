@@ -224,7 +224,7 @@ export async function POST(req:NextRequest){
     const textRuns:{text:string;options?:{bold?:boolean;color?:string}}[]=[];
     if(parts.length>1){textRuns.push({text:parts[0]});textRuns.push({text:tag,options:{bold:true,color:"9B3D26"}});if(parts.slice(1).join(tag))textRuns.push({text:parts.slice(1).join(tag)});}
     else textRuns.push({text:value});
-    s.addText(textRuns,{x:1.28,y,w:5.15,h:bulletHeight,fontFace:"Arial",fontSize:14,color:"263849",fit:"shrink",margin:0,valign:"mid"});
+    s.addText(textRuns,{x:1.28,y,w:5.15,h:bulletHeight,fontFace:"Arial",fontSize:14,color:"263849",fit:"shrink",margin:0,valign:"middle"});
    });
    const visual=visualAssets[i];
    if(visual){
