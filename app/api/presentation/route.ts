@@ -57,36 +57,51 @@ async function recentPubMed(topic:string):Promise<ResearchRef[]>{
 
 type MedicalVisual={data:string;mime:string;title:string;page:string;license:string;artist:string;animated:boolean};
 async function fetchCommonsVisual(query:string,preferGif=false):Promise<MedicalVisual|null>{
- try{
-  // Commons contains many medical diagrams as SVG. Request a PNG thumbnail for
-  // those files because PowerPoint cannot reliably embed the original SVG.
-  const search=(preferGif?"filetype:gif ":"")+query;
-  const api="https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch="+encodeURIComponent(search)+"&gsrlimit=12&prop=imageinfo&iiprop=url|extmetadata|size&iiurlwidth=1400&format=json&origin=*";
-  const res=await fetch(api,{headers:{"User-Agent":"FaizanAIMedicalPresentation/1.0 (educational use; contact: support@faizan.ai)","Accept":"application/json"} ,signal:AbortSignal.timeout(15000)});
-  if(!res.ok)throw new Error("Wikimedia Commons returned HTTP "+res.status);
-  const json=await res.json();
-  const pages=Object.values(json?.query?.pages||{}) as any[];
-  for(const p of pages){
-   const info=p?.imageinfo?.[0]; if(!info)continue;
-   const originalMime=String(info.mime||"").toLowerCase();
-   if(preferGif ? originalMime!=="image/gif" : !["image/jpeg","image/png","image/webp","image/svg+xml"].includes(originalMime))continue;
-   const url=preferGif?(info.url||""):(info.thumburl||info.url||"");
-   if(!url||!/^https:\/\//i.test(url))continue;
-   const path=new URL(url).pathname.toLowerCase();
-   const mime=preferGif?"image/gif":(String(info.thumbmime||"").toLowerCase()||(
-    originalMime==="image/svg+xml"?(path.endsWith(".png")?"image/png":"image/jpeg"):originalMime
-   ));
-   if(!preferGif&&!["image/jpeg","image/png","image/webp"].includes(mime))continue;
-   const image=await fetch(url,{headers:{"User-Agent":"FaizanAIMedicalPresentation/1.0 (educational use)"} ,signal:AbortSignal.timeout(15000)});
-   if(!image.ok)continue;
-   const bytes=Buffer.from(await image.arrayBuffer());
-   if(bytes.length>(preferGif?4:1.8)*1024*1024||bytes.length<1000)continue;
-   const meta=info.extmetadata||{};
-   const strip=(v:any)=>String(v?.value||"").replace(/<[^>]*>/g," ").replace(/&nbsp;/g," ").replace(/&amp;/g,"&").trim().slice(0,240);
-   return {data:bytes.toString("base64"),mime,title:String(p.title||"Wikimedia Commons file"),page:"https://commons.wikimedia.org/wiki/"+encodeURIComponent(String(p.title||"").replace(/ /g,"_")),license:strip(meta.LicenseShortName)||"See source page for license",artist:strip(meta.Artist)||"Author listed on source page",animated:preferGif};
-  }
- }catch(e){console.warn("[Faizan AI] Commons visual lookup failed for",query,e)}
- return null;
+  try{
+   const search=(preferGif?"filetype:gif ":"")+query;
+   const api="https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch="+encodeURIComponent(search)+"&gsrlimit=12&prop=imageinfo&iiprop=url|extmetadata|size&iiurlwidth=1400&format=json&origin=*";
+   const res=await fetch(api,{headers:{"User-Agent":"FaizanAIMedicalPresentation/1.0 (educational use)","Accept":"application/json"},signal:AbortSignal.timeout(12000)});
+   if(res.ok){
+    const json=await res.json();
+    const pages=Object.values(json?.query?.pages||{}) as any[];
+    for(const p of pages){
+     const info=p?.imageinfo?.[0]; if(!info)continue;
+     const originalMime=String(info.mime||"").toLowerCase();
+     if(preferGif?originalMime!=="image/gif":!["image/jpeg","image/png","image/webp","image/svg+xml"].includes(originalMime))continue;
+     const url=preferGif?(info.url||""):(info.thumburl||info.url||"");
+     if(!url||!/^https:\/\//i.test(url))continue;
+     const image=await fetch(url,{headers:{"User-Agent":"FaizanAIMedicalPresentation/1.0"},signal:AbortSignal.timeout(12000)});
+     if(!image.ok)continue;
+     const bytes=Buffer.from(await image.arrayBuffer());
+     const mime=preferGif?"image/gif":String(info.thumbmime||"").toLowerCase()|| (originalMime==="image/svg+xml"?"image/png":originalMime);
+     if(!["image/jpeg","image/png","image/webp","image/gif"].includes(mime)||bytes.length>1800000||bytes.length<1000)continue;
+     const meta=info.extmetadata||{};
+     const strip=(v:any)=>String(v?.value||"").replace(/<[^>]*>/g," ").replace(/&nbsp;/g," ").replace(/&amp;/g,"&").trim().slice(0,240);
+     return {data:bytes.toString("base64"),mime,title:String(p.title||"Wikimedia Commons file"),page:"https://commons.wikimedia.org/wiki/"+encodeURIComponent(String(p.title||"").replace(/ /g,"_")),license:strip(meta.LicenseShortName)||"See source page for license",artist:strip(meta.Artist)||"Author listed on source page",animated:preferGif};
+    }
+   }
+  }catch(e){console.warn("[Faizan AI] Wikimedia image lookup failed",query,e)}
+  if(preferGif)return null;
+  // Openverse is a second independent source; it often finds educational cell
+  // microscopy and anatomy images when Commons search returns no usable file.
+  try{
+   const api="https://api.openverse.org/v1/images/?q="+encodeURIComponent(query)+"&page_size=12&license=cc0,by,by-sa,by-nc,by-nc-sa,by-nd,by-nc-nd";
+   const res=await fetch(api,{headers:{"Accept":"application/json"},signal:AbortSignal.timeout(15000)});
+   if(!res.ok)throw new Error("Openverse returned HTTP "+res.status);
+   const results:any[]=(await res.json())?.results||[];
+   for(const item of results){
+    const url=String(item.thumbnail||item.url||"");
+    if(!/^https:\/\//i.test(url))continue;
+    const image=await fetch(url,{headers:{"User-Agent":"FaizanAIMedicalPresentation/1.0"},signal:AbortSignal.timeout(12000)});
+    if(!image.ok)continue;
+    const mime=String(image.headers.get("content-type")||"").split(";")[0].toLowerCase();
+    if(!["image/jpeg","image/png","image/webp"].includes(mime))continue;
+    const bytes=Buffer.from(await image.arrayBuffer());
+    if(bytes.length<1000||bytes.length>1800000)continue;
+    return {data:bytes.toString("base64"),mime,title:String(item.title||"Open-license medical image").slice(0,180),page:String(item.foreign_landing_url||item.url||"https://openverse.org/"),license:String(item.license||"Open license").toUpperCase(),artist:String(item.creator||"Creator not listed").slice(0,180),animated:false};
+   }
+  }catch(e){console.warn("[Faizan AI] Openverse image lookup failed",query,e)}
+  return null;
 }
 
 export async function POST(req:NextRequest){
