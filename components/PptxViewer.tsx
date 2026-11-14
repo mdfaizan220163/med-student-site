@@ -1,12 +1,6 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
-import * as pdfjs from "pdfjs-dist";
-
-pdfjs.GlobalWorkerOptions.workerSrc = new URL(
-  "pdfjs-dist/build/pdf.worker.min.mjs",
-  import.meta.url
-).toString();
 
 export default function PptxViewer({ pdfUrl, downloadUrl }: {
   pdfUrl: string; downloadUrl?: string;
@@ -19,10 +13,17 @@ export default function PptxViewer({ pdfUrl, downloadUrl }: {
 
   useEffect(() => {
     let cancelled = false;
-    let task: ReturnType<typeof pdfjs.getDocument> | undefined;
+    let task: ReturnType<typeof import("pdfjs-dist").getDocument> | undefined;
     async function render() {
       setLoading(true); setError("");
       try {
+        // PDF.js touches browser-only APIs (DOMMatrix) at module load, so import it only in the browser effect.
+        const pdfjs = await import("pdfjs-dist");
+        pdfjs.GlobalWorkerOptions.workerSrc = new URL(
+          "pdfjs-dist/build/pdf.worker.min.mjs",
+          import.meta.url
+        ).toString();
+        if (cancelled) return;
         task = pdfjs.getDocument(pdfUrl);
         const pdf = await task.promise;
         if (cancelled) return;
