@@ -8,7 +8,7 @@ export const maxDuration=240;
 
 type Slide={title:string;bullets:string[];visual?:string};
 type DeckImage={name:string;data:string;type:string;credit:string;animated:boolean};
-const clean=(v:unknown,f="")=>typeof v==="string"?v.replace(/[\\u0000-\\u001F]/g," ").trim():f;
+const clean=(v:unknown,f="")=>typeof v==="string"?v.replace(/[\u0000-\u001F]/g," ").trim():f;
 function addAutoDiagram(s:PptxGenJS.Slide,item:Slide,topic:string,navy:string){
  const title=clean(item.title);
  const bullets=(Array.isArray(item.bullets)?item.bullets:[]).slice(0,4).map(x=>clean(x).slice(0,100)).filter(Boolean);
@@ -42,7 +42,8 @@ function addAutoDiagram(s:PptxGenJS.Slide,item:Slide,topic:string,navy:string){
 type ResearchRef={title:string;year:string;journal:string;pmid:string;doi:string;abstract:string};
 async function recentPubMed(topic:string):Promise<ResearchRef[]>{
  try{
-  const year=new Date().getFullYear();\n  const term=encodeURIComponent(topic + " AND "+(year-4)+":"+year+"[dp]");
+  const year=new Date().getFullYear();
+  const term=encodeURIComponent(topic + " AND "+(year-4)+":"+year+"[dp]");
   const sr=await fetch("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&sort=pub_date&retmax=6&term="+term,{signal:AbortSignal.timeout(10000)});
   if(!sr.ok)return [];
   const ids:string[]=(await sr.json())?.esearchresult?.idlist||[];
