@@ -84,21 +84,31 @@ export async function POST(req:NextRequest){
     }
   }
 
-  // AI quality checkpoint: review and improve the complete outline before PPTX assembly.
-  const reviewPrompt=`Review this MBBS presentation about "${topic}" in ${language}. Check medical accuracy, relevance to the exact topic, logical slide order, duplication, missing high-yield concepts, and whether each visual instruction describes a useful topic-specific medical diagram. Correct errors and improve weak slides. Preserve the requested slide count (${count}) and return ONLY valid JSON in this exact shape: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Keep 3-5 concise bullets per slide. Do not add unsupported facts or citations. ORIGINAL OUTLINE:\\n${JSON.stringify(outline)}`;
-  const reviewSystem="You are a strict MBBS medical educator and presentation quality reviewer. Verify the outline for medical accuracy and relevance, correct issues, remove irrelevant visual ideas, and return only one complete valid JSON object with the required title, subtitle, and slides fields. No markdown.";
+  // Mandatory AI quality checkpoint: never finalize an unreviewed deck.
+  const reviewPrompt=`Act as the final medical quality-control reviewer for an MBBS teaching presentation about "${topic}" in ${language}. Review EVERY slide. Check: (1) factual medical accuracy and terminology, (2) direct relevance to the requested topic, (3) correct mechanisms, sequences and relationships, (4) missing essential high-yield concepts, (5) duplication and logical order, (6) useful and medically relevant visual/diagram instructions. Correct errors; remove irrelevant content; improve weak slides. Preserve exactly ${count} slides. Return ONLY valid JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Each slide must have 3-5 concise bullets. Do not invent citations, references, guidelines or facts. If a fact is uncertain, phrase it cautiously. DRAFT TO REVIEW:\n${JSON.stringify(outline)}`;
+  const reviewSystem="You are the mandatory final quality-control reviewer for medical education slides. Be strict, verify each statement for standard MBBS-level medical accuracy, correct mistakes, remove irrelevant content and ensure every visual instruction matches the topic. Return one complete JSON object only, with exactly the requested slide count and required fields. No markdown.";
+  let qualityCheckpointPassed=false;
   try {
-    const reviewed=await generateWithFallback([{role:"user",content:reviewPrompt}],reviewSystem,provider,6500);
+    const reviewed=await generateWithFallback([{role:"user",content:reviewPrompt}],reviewSystem,provider,7000);
     const improved=parseOutline(reviewed.answer);
-    if(Array.isArray(improved.slides)&&improved.slides.length>=Math.min(5,count)){
-      outline={title:clean(improved.title,clean(outline.title,topic)),subtitle:clean(improved.subtitle,clean(outline.subtitle,"Medical learning presentation")),slides:improved.slides.slice(0,count).map((s)=>({title:clean(s.title,"Key concept"),bullets:Array.isArray(s.bullets)?s.bullets.map(x=>clean(x)).filter(Boolean).slice(0,5):[],visual:clean(s.visual,"")}))};
-      console.info("[Faizan AI] AI quality checkpoint passed",reviewed.provider);
-    } else {
-      console.warn("[Faizan AI] Quality checkpoint returned an incomplete outline; using validated draft.");
+    if(!Array.isArray(improved.slides)||improved.slides.length!==count) {
+      throw new Error(`Review returned ${improved.slides?.length??0} slides; expected exactly ${count}.`);
     }
+    const checkedSlides=improved.slides.map((s,index)=>{
+      const title=clean(s?.title);
+      const bullets=Array.isArray(s?.bullets)?s.bullets.map(x=>clean(x)).filter(Boolean).slice(0,5):[];
+      if(!title||bullets.length<3)throw new Error(`Slide ${index+1} is incomplete after review.`);
+      return {title,bullets,visual:clean(s.visual,"Create a topic-specific labeled medical diagram.")};
+    });
+    outline={title:clean(improved.title,clean(outline.title,topic)),subtitle:clean(improved.subtitle,clean(outline.subtitle,"Medical learning presentation")),slides:checkedSlides};
+    qualityCheckpointPassed=true;
+    console.info("[Faizan AI] Mandatory medical quality checkpoint passed",reviewed.provider);
   } catch (reviewError) {
-    console.warn("[Faizan AI] Quality checkpoint unavailable; using validated draft.",reviewError);
+    console.error("[Faizan AI] Mandatory quality checkpoint failed",reviewError);
+    throw new Error("The medical quality checkpoint could not be completed. Your PowerPoint was not finalized. Please try again or select another AI provider.");
   }
+  if(!qualityCheckpointPassed)throw new Error("The medical quality checkpoint was not passed. Presentation finalization stopped.");
+
 
   const pptx=new PptxGenJS();
   pptx.layout="LAYOUT_WIDE";
