@@ -7,7 +7,10 @@ export const runtime="nodejs";
 export const maxDuration=240;
 
 type Slide={title:string;bullets:string[];visual?:string};
-type DeckImage={name:string;data:string;type:string;credit:string;animated:boolean};
+type PubMedSummary={title?:string;pubdate?:string;fulljournalname?:string;source?:string;uid?:string;articleids?:{idtype?:string;value?:string}[]};
+type CommonsMetadata={value?:string};
+type CommonsImageInfo={mime?:string;url?:string;thumburl?:string;extmetadata?:Record<string,CommonsMetadata>};
+type CommonsPage={title?:string;imageinfo?:CommonsImageInfo[]};
 const clean=(v:unknown,f="")=>typeof v==="string"?v.replace(/[\u0000-\u001F]/g," ").trim():f;
 function addAutoDiagram(s:PptxGenJS.Slide,item:Slide,topic:string,navy:string){
  const title=clean(item.title);
@@ -61,7 +64,7 @@ async function recentPubMed(topic:string):Promise<ResearchRef[]>{
    const parts=[...block.matchAll(/<AbstractText(?:[^>]*)>([\s\S]*?)<\/AbstractText>/g)].map(m=>m[1].replace(/<[^>]+>/g," ").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/\s+/g," ").trim());
    if(id&&parts.length)abstractById.set(id,parts.join(" "));
   }
-  return ids.map(id=>data?.result?.[id]).filter(Boolean).map((p:any)=>({title:String(p.title||"").replace(/<[^>]*>/g,"").slice(0,180),year:String(p.pubdate||"").match(/20\d{2}/)?.[0]||"",journal:String(p.fulljournalname||p.source||"").slice(0,80),pmid:String(p.uid||""),doi:String((p.articleids||[]).find((a:any)=>a.idtype==="doi")?.value||""),abstract:abstractById.get(String(p.uid||""))||""})).filter((p:ResearchRef)=>p.title&&p.pmid&&p.abstract).slice(0,5);
+  return ids.map(id=>data?.result?.[id]).filter(Boolean).map((p:PubMedSummary)=>({title:String(p.title||"").replace(/<[^>]*>/g,"").slice(0,180),year:String(p.pubdate||"").match(/20\d{2}/)?.[0]||"",journal:String(p.fulljournalname||p.source||"").slice(0,80),pmid:String(p.uid||""),doi:String((p.articleids||[]).find((a)=>a.idtype==="doi")?.value||""),abstract:abstractById.get(String(p.uid||""))||""})).filter((p:ResearchRef)=>p.title&&p.pmid&&p.abstract).slice(0,5);
  }catch(e){console.warn("[Faizan AI] PubMed lookup unavailable",e);return []}
 }
 
@@ -74,7 +77,7 @@ async function fetchCommonsVisual(query:string,preferGif=false):Promise<MedicalV
   const res=await fetch(api,{headers:{"User-Agent":"FaizanAIMedicalPresentation/1.0 (educational use)"} ,signal:AbortSignal.timeout(12000)});
   if(!res.ok)return null;
   const json=await res.json();
-  const pages=Object.values(json?.query?.pages||{}) as any[];
+  const pages=Object.values(json?.query?.pages||{}) as CommonsPage[];
   for(const p of pages){
    const info=p?.imageinfo?.[0]; if(!info)continue;
    const mime=String(info.mime||"");
@@ -86,7 +89,7 @@ async function fetchCommonsVisual(query:string,preferGif=false):Promise<MedicalV
    const bytes=Buffer.from(await image.arrayBuffer());
    if(bytes.length>(preferGif?4:1.5)*1024*1024||bytes.length<1000)continue;
    const meta=info.extmetadata||{};
-   const strip=(v:any)=>String(v?.value||"").replace(/<[^>]*>/g," ").replace(/&nbsp;/g," ").replace(/&amp;/g,"&").trim().slice(0,240);
+   const strip=(v?:CommonsMetadata)=>String(v?.value||"").replace(/<[^>]*>/g," ").replace(/&nbsp;/g," ").replace(/&amp;/g,"&").trim().slice(0,240);
    return {data:bytes.toString("base64"),mime,title:String(p.title||"Wikimedia Commons file"),page:"https://commons.wikimedia.org/wiki/"+encodeURIComponent(String(p.title||"").replace(/ /g,"_")),license:strip(meta.LicenseShortName)||"See source page for license",artist:strip(meta.Artist)||"Author listed on source page",animated:mime==="image/gif"};
   }
  }catch(e){console.warn("[Faizan AI] Commons visual lookup failed",e)}
@@ -212,11 +215,17 @@ export async function POST(req:NextRequest){
    s.addShape("rect",{x:0,y:0,w:13.333,h:.16,line:{color:navy},fill:{color:navy}});
    s.addText(clean(item.title,"Section "+(i+1)),{x:.95,y:.55,w:11.4,h:.82,fontFace:"Arial",fontSize:23,bold:true,color:navy,margin:[0.12,0.2,0.12,0.2],fit:"shrink"});
    const bullets=Array.isArray(item.bullets)?item.bullets.slice(0,5):[];
-   // Use literal bullet characters rather than PowerPoint bullet metadata.
-   // This avoids first-character clipping in some PPTX-to-PDF converters.
-   const runs:any[]=[];
-   bullets.forEach((b:string,index:number)=>{runs.push({text:"•  "});const value=clean(b);const tag="RECENT RESEARCH";if(value.includes(tag)){const parts=value.split(tag);runs.push({text:parts[0]});runs.push({text:tag,options:{bold:true,color:"9B3D26"}});if(parts.slice(1).join(tag))runs.push({text:parts.slice(1).join(tag)});}else runs.push({text:value});if(index<bullets.length-1)runs.push({text:"\n"});});
-   if(runs.length)s.addText(runs,{x:.95,y:1.72,w:5.55,h:4.85,fontFace:"Arial",fontSize:14,color:"263849",paraSpaceAfter:12,fit:"shrink",margin:[0.15,0.18,0.15,0.2],valign:"top",lineSpacingMultiple:1.05});
+   // Separate bullet text boxes avoid rich-text run boundary clipping in PowerPoint.
+   const bulletTop=1.72, bulletGap=0.16, bulletHeight=(4.85-bulletGap*(bullets.length-1))/Math.max(bullets.length,1);
+   bullets.forEach((bullet,index)=>{
+    const y=bulletTop+index*(bulletHeight+bulletGap);
+    s.addText("•",{x:.98,y:y+.02,w:.24,h:bulletHeight-.02,fontFace:"Arial",fontSize:14,bold:true,color:"477EAA",margin:0});
+    const value=clean(bullet),tag="RECENT RESEARCH",parts=value.split(tag);
+    const textRuns:{text:string;options?:{bold?:boolean;color?:string}}[]=[];
+    if(parts.length>1){textRuns.push({text:parts[0]});textRuns.push({text:tag,options:{bold:true,color:"9B3D26"}});if(parts.slice(1).join(tag))textRuns.push({text:parts.slice(1).join(tag)});}
+    else textRuns.push({text:value});
+    s.addText(textRuns,{x:1.28,y,w:5.15,h:bulletHeight,fontFace:"Arial",fontSize:14,color:"263849",fit:"shrink",margin:0,valign:"mid"});
+   });
    const visual=visualAssets[i];
    if(visual){
     s.addImage({data:`data:${visual.mime};base64,${visual.data}`,x:7.05,y:1.8,sizing:{type:"contain",w:5.55,h:4.55}});
