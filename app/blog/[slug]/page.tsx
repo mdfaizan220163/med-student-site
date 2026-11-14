@@ -24,7 +24,7 @@ export default async function BlogPost({ params }: { params: Promise<{ slug: str
     notFound();
   }
 
-  const postData = post as any;
+  const postData = post;
 
   return (
     <main className="max-w-3xl mx-auto px-4 py-12">
