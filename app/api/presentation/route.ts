@@ -117,7 +117,8 @@ export async function POST(req:NextRequest){
   const sources=clean(form.get("sources"),"upload,web,ai").split(",").filter(Boolean);
   const research=await recentPubMed(topic);
   const researchContext=research.length?JSON.stringify(research.map(({title,year,journal,pmid,doi,abstract})=>({title,year,journal,pmid,doi,abstract}))):"No recent PubMed abstracts were retrieved; do not invent recent research.";
-  const prompt=`Create a medically accurate MBBS presentation in ${language} about ${topic}. Use the relevant standard textbook for established foundational knowledge. Recent PubMed records retrieved for this topic: ${researchContext}. Where relevant, explain recent findings accurately and distinguish them from established textbook knowledge. Mark every research-derived statement with the exact bold prefix **RECENT RESEARCH**. Do not infer findings from a title alone; only describe what the cited record supports. Return only JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Create exactly ${count} slides, 3-5 concise bullets each. Include objectives, core concepts, clinical relevance, summary and review questions. Never invent citations or guidelines.`;
+  const textbookMap=/physiology|cardiac|heart|respirat|renal|neurophys/i.test(topic)?"Guyton and Hall Textbook of Medical Physiology":/patholog|inflammation|necrosis|neoplasm|hypersensitiv/i.test(topic)?"Robbins & Cotran Pathologic Basis of Disease":/anatom/i.test(topic)?"Gray's Anatomy":/pharm|drug|receptor|antibiotic/i.test(topic)?"Katzung & Trevor's Basic & Clinical Pharmacology":/microb|bacter|virus|fung|parasite/i.test(topic)?"Jawetz, Melnick & Adelberg's Medical Microbiology":"the most relevant standard MBBS textbook";
+  const prompt=`Create a medically accurate MBBS presentation in ${language} about ${topic}. Use ${textbookMap} as the primary textbook framework for established knowledge; do not invent page numbers or pretend to quote inaccessible textbook text. Recent PubMed records retrieved for this topic: ${researchContext}. Use only abstract-supported findings for recent research. Cite PMID/DOI next to each research-derived claim and mark it **RECENT RESEARCH** in bold. Distinguish established textbook knowledge from research findings. If abstracts are unavailable, do not make specific claims about those studies. Return only JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Create exactly ${count} slides, 3-5 concise bullets each. Include objectives, core concepts, clinical relevance, summary and review questions. Never invent citations or guidelines.`;
   const system = "Create medically accurate MBBS slides. Return exactly one valid JSON object. Use double quotes for every key and string. No markdown fences, comments, or trailing commas. Required shape: {\"title\":\"...\",\"subtitle\":\"...\",\"slides\":[{\"title\":\"...\",\"bullets\":[\"...\"],\"visual\":\"...\"}]}";
   let result = await generateWithFallback([{role:"user",content:prompt}], system, provider, 5000);
   const parseOutline = (answer: string): {title?:string;subtitle?:string;slides?:Slide[]} => {
@@ -235,6 +236,13 @@ export async function POST(req:NextRequest){
    mark(s);
   }
 
+  // Textbook reference is explicitly identified; no page numbers are fabricated.
+  const textbookSlide=pptx.addSlide();textbookSlide.background={color:"FFFFFF"};
+  textbookSlide.addText("TEXTBOOK FOUNDATION",{x:.7,y:.55,w:11.8,h:.55,fontFace:"Arial",fontSize:24,bold:true,color:navy,margin:0});
+  textbookSlide.addText(textbookMap,{x:.85,y:1.55,w:11.5,h:.55,fontFace:"Arial",fontSize:18,bold:true,color:navy,fit:"shrink"});
+  textbookSlide.addText("Used as the standard subject reference framework. Consult your institution's assigned edition for exact chapter and page references; no page numbers are inferred.",{x:.85,y:2.25,w:11.5,h:.7,fontFace:"Arial",fontSize:12,color:"263849",fit:"shrink"});
+  mark(textbookSlide);
+
   // Recent research references are displayed separately from textbook foundations.
   if(research.length){
    const rs=pptx.addSlide();
@@ -256,7 +264,7 @@ export async function POST(req:NextRequest){
    const mediaSlide=pptx.addSlide();mediaSlide.background={color:"FFFFFF"};
    mediaSlide.addText("ANIMATED MEDICAL MEDIA",{x:.7,y:.55,w:11.8,h:.55,fontFace:"Arial",fontSize:23,bold:true,color:navy});
    mediaSlide.addImage({data:`data:image/gif;base64,${animatedAsset.data}`,x:2.1,y:1.55,w:9.1,h:4.9,sizing:"contain"});
-   mediaSlide.addText("Embedded animated GIF · Play in PowerPoint Slide Show",{x:1.1,y:6.65,w:11,h:.25,fontFace:"Arial",fontSize:9,color:"60788D",align:"center"});
+   mediaSlide.addText("Embedded animated GIF · Embedded GIF asset · playback support depends on PowerPoint version and viewer",{x:1.1,y:6.65,w:11,h:.25,fontFace:"Arial",fontSize:9,color:"60788D",align:"center"});
    mark(mediaSlide);
   }
   // Fast, editable final revision slide. No image-generation API call or extra API key required.
