@@ -71,28 +71,41 @@ async function recentPubMed(topic:string):Promise<ResearchRef[]>{
 
 type MedicalVisual={data:string;mime:string;title:string;page:string;license:string;artist:string;animated:boolean};
 async function fetchCommonsVisual(query:string,preferGif=false):Promise<MedicalVisual|null>{
- try{
-  const search=(preferGif?"filetype:gif ":"filetype:bitmap ")+query+" medical";
-  const api="https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch="+encodeURIComponent(search)+"&gsrlimit=8&prop=imageinfo&iiprop=url|extmetadata|size&iiurlwidth=1400&format=json&origin=*";
-  const res=await fetch(api,{headers:{"User-Agent":"FaizanAIMedicalPresentation/1.0 (educational use)"} ,signal:AbortSignal.timeout(12000)});
-  if(!res.ok)return null;
-  const json=await res.json();
-  const pages=Object.values(json?.query?.pages||{}) as CommonsPage[];
-  for(const p of pages){
-   const info=p?.imageinfo?.[0]; if(!info)continue;
-   const mime=String(info.mime||"");
-   if(preferGif ? mime!=="image/gif" : !["image/jpeg","image/png","image/webp"].includes(mime))continue;
-   const url=preferGif?(info.url||""):(info.thumburl||info.url||"");
-   if(!url||!/^https:\/\//i.test(url))continue;
-   const image=await fetch(url,{signal:AbortSignal.timeout(12000)});
-   if(!image.ok)continue;
-   const bytes=Buffer.from(await image.arrayBuffer());
-   if(bytes.length>(preferGif?4:1.5)*1024*1024||bytes.length<1000)continue;
-   const meta=info.extmetadata||{};
-   const strip=(v?:CommonsMetadata)=>String(v?.value||"").replace(/<[^>]*>/g," ").replace(/&nbsp;/g," ").replace(/&amp;/g,"&").trim().slice(0,240);
-   return {data:bytes.toString("base64"),mime,title:String(p.title||"Wikimedia Commons file"),page:"https://commons.wikimedia.org/wiki/"+encodeURIComponent(String(p.title||"").replace(/ /g,"_")),license:strip(meta.LicenseShortName)||"See source page for license",artist:strip(meta.Artist)||"Author listed on source page",animated:mime==="image/gif"};
-  }
- }catch(e){console.warn("[Faizan AI] Commons visual lookup failed",e)}
+ // Try the exact slide topic first, then broader medically relevant Commons searches.
+ const normalized=query.replace(/\\s+/g," ").trim();
+ const searches=preferGif
+  ? ["filetype:gif "+normalized, "filetype:gif medical animation physiology"]
+  : [normalized, normalized+" anatomy illustration", normalized+" medical diagram", normalized+" histology OR physiology OR anatomy"];
+ for(const search of searches){
+  try{
+   const params=new URLSearchParams({action:"query",generator:"search",gsrnamespace:"6",gsrsearch:search,gsrlimit:"20",prop:"imageinfo",iiprop:"url|extmetadata|size|mime",iiurlwidth:"1600",format:"json",origin:"*"});
+   const res=await fetch("https://commons.wikimedia.org/w/api.php?"+params.toString(),{headers:{"User-Agent":"FaizanAIMedicalPresentation/1.1 (educational use)"},signal:AbortSignal.timeout(15000)});
+   if(!res.ok)continue;
+   const json=await res.json();
+   const pages=Object.values(json?.query?.pages||{}) as CommonsPage[];
+   for(const p of pages){
+    const info=p?.imageinfo?.[0];if(!info)continue;
+    const mime=String(info.mime||"").toLowerCase();
+    if(preferGif?mime!=="image/gif":!["image/jpeg","image/png","image/webp"].includes(mime))continue;
+    const url=preferGif?(info.url||""):(info.thumburl||info.url||"");
+    if(!url||!/^https:\/\//i.test(url))continue;
+    const image=await fetch(url,{signal:AbortSignal.timeout(15000)});
+    if(!image.ok)continue;
+    const bytes=Buffer.from(await image.arrayBuffer());
+    if(bytes.length>(preferGif?4:2.5)*1024*1024||bytes.length<1000)continue;
+    // Reject HTML/error payloads masquerading as successful downloads.
+    const isJpeg=bytes[0]===0xff&&bytes[1]===0xd8&&bytes[2]===0xff;
+    const isPng=bytes.subarray(0,8).equals(Buffer.from([137,80,78,71,13,10,26,10]));
+    const isWebp=bytes.toString("ascii",0,4)==="RIFF"&&bytes.toString("ascii",8,12)==="WEBP";
+    const isGif=bytes.toString("ascii",0,3)==="GIF";
+    if(!(preferGif?isGif:(isJpeg||isPng||isWebp)))continue;
+    const actualMime=isJpeg?"image/jpeg":isPng?"image/png":isWebp?"image/webp":"image/gif";
+    const meta=info.extmetadata||{};
+    const strip=(v?:CommonsMetadata)=>String(v?.value||"").replace(/<[^>]*>/g," ").replace(/&nbsp;/g," ").replace(/&amp;/g,"&").trim().slice(0,240);
+    return {data:bytes.toString("base64"),mime:actualMime,title:String(p.title||"Wikimedia Commons file"),page:"https://commons.wikimedia.org/wiki/"+encodeURIComponent(String(p.title||"").replace(/ /g,"_")),license:strip(meta.LicenseShortName)||"See source page for license",artist:strip(meta.Artist)||"Author listed on source page",animated:actualMime==="image/gif"};
+   }
+  }catch(e){console.warn("[Faizan AI] Commons visual search attempt failed",search,e)}
+ }
  return null;
 }
 
