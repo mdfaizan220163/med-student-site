@@ -277,7 +277,7 @@ export async function POST(req:NextRequest){
    "RECENT RESEARCH"
   ].filter(Boolean);
   const zip=await JSZip.loadAsync(b);
-  const slideXml=Object.keys(zip.files).filter((name)=>/^ppt\\/slides\\/slide\\d+\\.xml$/.test(name));
+  const slideXml=Object.keys(zip.files).filter((name)=>name.startsWith("ppt/slides/")&&name.endsWith(".xml")&&/^slide[0-9]+[.]xml$/.test(name.slice("ppt/slides/".length)));
   const serializedText=(await Promise.all(slideXml.map(async(name)=>await zip.file(name)!.async("text")))).join("\\n");
   const xmlDecode=(value:string)=>value.replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&apos;/g,"'");
   const missingFromPptx=expectedText.filter((value)=>{
