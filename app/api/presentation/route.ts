@@ -97,7 +97,7 @@ async function fetchCommonsVisual(query:string,preferGif=false):Promise<MedicalV
 type MedicalVideo={data:string;title:string;page:string;license:string;artist:string;bytes:number};
 async function fetchCommonsVideo(query:string):Promise<MedicalVideo|null>{
  try{
-  const search="filetype:mp4 "+query+" medical";
+  const search=query+" filetype:video/mp4";
   const api="https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch="+encodeURIComponent(search)+"&gsrlimit=12&prop=imageinfo&iiprop=url|extmetadata|size&format=json&origin=*";
   const res=await fetch(api,{headers:{"User-Agent":"FaizanAIMedicalPresentation/1.0 (educational use)"},signal:AbortSignal.timeout(15000)});
   if(!res.ok)return null;
@@ -108,7 +108,7 @@ async function fetchCommonsVideo(query:string):Promise<MedicalVideo|null>{
    const response=await fetch(url,{signal:AbortSignal.timeout(20000)});
    if(!response.ok)continue;
    const bytes=Buffer.from(await response.arrayBuffer());
-   if(bytes.length<50000||bytes.length>12*1024*1024)continue;
+   if(bytes.length<50000||bytes.length>8*1024*1024)continue;
    const meta=info.extmetadata||{};
    const strip=(v:any)=>String(v?.value||"").replace(/<[^>]*>/g," ").replace(/&nbsp;/g," ").replace(/&amp;/g,"&").trim().slice(0,240);
    return {data:bytes.toString("base64"),title:String(page.title||"Wikimedia Commons MP4"),page:"https://commons.wikimedia.org/wiki/"+encodeURIComponent(String(page.title||"").replace(/ /g,"_")),license:strip(meta.LicenseShortName)||"See source page for license",artist:strip(meta.Artist)||"Author listed on source page",bytes:bytes.length};
@@ -293,7 +293,7 @@ export async function POST(req:NextRequest){
    const mediaSlide=pptx.addSlide();mediaSlide.background={color:"FFFFFF"};
    mediaSlide.addText("EMBEDDED MEDICAL VIDEO",{x:.7,y:.55,w:11.8,h:.55,fontFace:"Arial",fontSize:23,bold:true,color:navy});
    mediaSlide.addMedia({type:"video",data:`video/mp4;base64,${embeddedVideo.data}`,x:1.2,y:1.35,w:10.9,h:5.25,objectName:"Embedded medical teaching video"});
-   mediaSlide.addText("MP4 is embedded in this PowerPoint file. Select the video and use Play in Slide Show.",{x:1.1,y:6.72,w:11,h:.25,fontFace:"Arial",fontSize:9,color:"60788D",align:"center"});
+   mediaSlide.addText("MP4 video is embedded in this PowerPoint file. Select the video and use Play in Slide Show. Playback depends on supported codecs and PowerPoint version.",{x:1.1,y:6.72,w:11,h:.25,fontFace:"Arial",fontSize:9,color:"60788D",align:"center"});
    mark(mediaSlide);
   }else if(animatedAsset){
    const mediaSlide=pptx.addSlide();mediaSlide.background={color:"FFFFFF"};
