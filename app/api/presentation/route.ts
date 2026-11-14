@@ -8,65 +8,35 @@ export const maxDuration=120;
 
 type Slide={title:string;bullets:string[];visual?:string};
 type DeckImage={name:string;data:string;type:string;credit:string;animated:boolean};
-const stopWords=new Set(["the","and","for","with","from","into","about","medical","anatomy","diagram","image","illustration","showing","view","of","in","on","to","a","an","assessment","modern","methods","overview","introduction","principles","clinical","study","lecture"]);
-function tokens(value:string){
- return [...new Set(value.toLowerCase().replace(/[^a-z0-9\s-]/g," ").split(/\s+/).filter(w=>w.length>2&&!stopWords.has(w)))];
-}
-function relevanceScore(query:string,candidate:string){
- const terms=tokens(query), words=new Set(tokens(candidate));
- if(!terms.length||!words.size)return 0;
- return terms.filter(w=>words.has(w)||[...words].some(v=>v.length>4&&(v.includes(w)||w.includes(v)))).length/terms.length;
-}
-async function fetchCommonsImage(query:string):Promise<DeckImage|null>{
- try{
-  const params=new URLSearchParams({action:"query",format:"json",formatversion:"2",generator:"search",gsrsearch:"filetype:bitmap "+query,gsrnamespace:"6",gsrlimit:"8",prop:"imageinfo",iiprop:"url|extmetadata",iiurlwidth:"1200"});
-  const res=await fetch("https://commons.wikimedia.org/w/api.php?"+params.toString(),{headers:{"Accept":"application/json","User-Agent":"FaizanAI-MedicalSlides/1.0"},signal:AbortSignal.timeout(4500)});
-  if(!res.ok)return null;
-  const body=await res.json();
-  for(const page of body?.query?.pages||[]){
-   const info=page.imageinfo?.[0],meta=info?.extmetadata||{};
-   const plain=(v:unknown)=>typeof v==="object"&&v!==null&&"value" in v?String((v as {value:unknown}).value).replace(/<[^>]*>/g," ").replace(/&amp;/g,"&").trim():"";
-   const candidate=[String(page.title||""),plain(meta.ImageDescription),plain(meta.ObjectName)].join(" ");
-   if(relevanceScore(query,candidate)<0.2)continue;
-   const originalUrl=typeof info?.url==="string"?info.url:"";
-   const imageUrl=originalUrl.toLowerCase().includes(".gif")?originalUrl:(info?.thumburl||info?.url);
-   if(typeof imageUrl!=="string"||!(imageUrl.startsWith("https://")||imageUrl.startsWith("http://")))continue;
-   const img=await fetch(imageUrl,{signal:AbortSignal.timeout(4500)});
-   if(!img.ok)continue;
-   const type=(img.headers.get("content-type")||"").split(";")[0].toLowerCase();
-   if(!["image/jpeg","image/png","image/gif"].includes(type))continue;
-   const bytes=Buffer.from(await img.arrayBuffer());
-   if(!bytes.length||bytes.length>6*1024*1024)continue;
-   const animated=type==="image/gif"&&bytes.toString("latin1").includes("NETSCAPE2.0");
-   const artist=plain(meta.Artist)||"Wikimedia Commons contributor",license=plain(meta.LicenseShortName)||"Open license",licenseUrl=plain(meta.LicenseUrl);
-   const pageUrl="https://commons.wikimedia.org/wiki/"+encodeURIComponent(String(page.title||"").replace(/ /g,"_"));
-   return {name:String(page.title||"Wikimedia Commons image").replace(/^File:/,"").slice(0,80),data:bytes.toString("base64"),type,credit:[artist,license,licenseUrl,pageUrl].filter(Boolean).join(" · "),animated};
-  }
- }catch(e){console.warn("Commons lookup:",e);}
- return null;
-}
-async function fetchOpenImage(query:string):Promise<DeckImage|null>{
- try{
-  const url="https://api.openverse.org/v1/images/?"+new URLSearchParams({q:query,page_size:"8",mature:"false"});
-  const res=await fetch(url,{headers:{"Accept":"application/json"},signal:AbortSignal.timeout(4500)});
-  if(!res.ok)return null;
-  const body=await res.json();
-  for(const item of body.results||[]){
-   if(typeof item.url!=="string"||!(item.url.startsWith("https://")||item.url.startsWith("http://")))continue;
-   const candidate=[String(item.title||""),String(item.description||""),...(Array.isArray(item.tags)?item.tags.map((t:any)=>typeof t==="string"?t:String(t.name||"")):[])].join(" ");
-   if(relevanceScore(query,candidate)<0.15)continue;
-   const img=await fetch(item.url,{signal:AbortSignal.timeout(4500)});
-   if(!img.ok)continue;
-   const type=(img.headers.get("content-type")||"").split(";")[0].toLowerCase();
-   if(!["image/jpeg","image/png","image/gif"].includes(type))continue;
-   const bytes=Buffer.from(await img.arrayBuffer());
-   if(!bytes.length||bytes.length>6*1024*1024)continue;
-    const animated=type==="image/gif"&&bytes.toString("latin1").includes("NETSCAPE2.0");
-   const license=String(item.license||"").toUpperCase(),creator=String(item.creator||"Unknown creator").slice(0,80),title=String(item.title||"Open-license image").slice(0,80),page=String(item.foreign_landing_url||item.detail_url||""),licenseUrl=String(item.license_url||"");
-   return {name:title,data:bytes.toString("base64"),type,credit:[creator,license,licenseUrl,page].filter(Boolean).join(" · "),animated};
-  }
- }catch(e){console.warn("Openverse lookup:",e);}
- return null;
+const clean=(v:unknown,f="")=>typeof v==="string"?v.replace(/[\\u0000-\\u001F]/g," ").trim():f;
+function addAutoDiagram(s:PptxGenJS.Slide,item:Slide,topic:string,navy:string){
+ const title=clean(item.title);
+ const bullets=(Array.isArray(item.bullets)?item.bullets:[]).slice(0,4).map(x=>clean(x).slice(0,100)).filter(Boolean);
+ const cardiac=/cardiac cycle|heart cycle|ventricular systole|atrial systole/i.test(topic+" "+title);
+ s.addText(cardiac?"CARDIAC CYCLE · MECHANICAL SEQUENCE":"CONCEPT MAP · KEY MECHANISM",{x:7.15,y:1.55,w:5.45,h:.3,fontFace:"Arial",fontSize:10,bold:true,color:"477EAA",charSpacing:1.1,fit:"shrink"});
+ if(cardiac){
+  const phases=["Atrial systole","Isovolumetric contraction","Ventricular ejection","Isovolumetric relaxation","Ventricular filling"];
+  const desc=["AV valves open","All valves closed","Semilunar valves open","All valves closed","AV valves open"];
+  phases.forEach((p,i)=>{
+   const y=2.05+i*.83;
+   s.addShape("roundRect",{x:7.2,y,w:4.9,h:.62,rectRadius:.08,line:{color:"C9D9E7",width:1},fill:{color:i%2?"F5F8FB":"EAF2F8"}});
+   s.addText(p,{x:7.4,y:y+.08,w:2.75,h:.2,fontFace:"Arial",fontSize:11,bold:true,color:navy,fit:"shrink",margin:0});
+   s.addText(desc[i],{x:10.05,y:y+.1,w:1.85,h:.18,fontFace:"Arial",fontSize:9,color:"42627D",fit:"shrink",align:"right",margin:0});
+   if(i<phases.length-1)s.addShape("line",{x:9.65,y:y+.62,w:0,h:.2,line:{color:"477EAA",width:1.5,beginArrowType:"none",endArrowType:"triangle"}});
+  });
+  s.addText("Pressure rises → ejection → pressure falls → filling",{x:7.25,y:6.35,w:5.25,h:.3,fontFace:"Arial",fontSize:9,bold:true,color:"2E6F9E",fit:"shrink",align:"center"});
+ }else{
+  const nodes=bullets.slice(0,4);
+  const count=Math.max(nodes.length,1), gap=.12, h=Math.min(.82,(4.1-gap*(count-1))/count);
+  nodes.forEach((p,i)=>{
+   const y=2.05+i*(h+gap);
+   s.addShape("roundRect",{x:7.2,y,w:4.95,h,line:{color:"C9D9E7",width:1},fill:{color:i%2?"F5F8FB":"EAF2F8"}});
+   s.addShape("ellipse",{x:7.4,y:y+h/2-.14,w:.28,h:.28,line:{color:"477EAA"},fill:{color:"477EAA"}});
+   s.addText(String(i+1),{x:7.4,y:y+h/2-.1,w:.28,h:.16,fontFace:"Arial",fontSize:8,bold:true,color:"FFFFFF",align:"center",margin:0});
+   s.addText(p,{x:7.85,y:y+.08,w:4.05,h:h-.16,fontFace:"Arial",fontSize:10,color:"263849",fit:"shrink",valign:"mid",margin:.03});
+   if(i<nodes.length-1)s.addShape("line",{x:9.65,y:y+h,w:0,h:gap,line:{color:"477EAA",width:1.5,endArrowType:"triangle"}});
+  });
+ }
 }
 function addAutoDiagram(s:PptxGenJS.Slide,item:Slide,navy:string){
  const points=(Array.isArray(item.bullets)?item.bullets:[]).slice(0,3).map(x=>clean(x).slice(0,78)).filter(Boolean);
@@ -81,8 +51,6 @@ function addAutoDiagram(s:PptxGenJS.Slide,item:Slide,navy:string){
   s.addText(p,{x:8.9,y:y+.12,w:3.48,h:.55,fontFace:"Arial",fontSize:10,color:"263849",fit:"shrink",valign:"middle",margin:.04});
  });
 }
-const clean=(v:unknown,f="")=>typeof v==="string"?v.replace(/[\u0000-\u001F]/g," ").trim():f;
-
 export async function POST(req:NextRequest){
  try{
   const supabase=await createClient();
@@ -141,40 +109,13 @@ export async function POST(req:NextRequest){
   const mark=(s:PptxGenJS.Slide)=>s.addText("FAIZAN AI",{x:10.15,y:7.13,w:2.45,h:.18,fontFace:"Arial",fontSize:8,bold:true,color:"8BA2B7",align:"right",margin:0});
 
   const slides=outline.slides.slice(0,count);
-  // Search each slide independently using several focused alternatives. Never overwrite
-  // a successful match with a later empty result.
-  const findSlideImage=async(item:Slide):Promise<DeckImage|null>=>{
-   const queries=[clean(item.visual),clean(item.title),clean(item.title)+" medical illustration",topic+" "+clean(item.title)]
-    .map(q=>q.trim().replace(/\s+/g," ").slice(0,100))
-    .filter((q,index,all)=>q.length>2&&all.indexOf(q)===index);
-   for(const query of queries){
-    const found=await fetchCommonsImage(query)||await fetchOpenImage(query);
-    if(found)return found;
-   }
-   return null;
-  };
-  const visualImages:(DeckImage|null)[]=slides.map(()=>null);
-  const coverImage: {value:DeckImage|null}={value:null};
-  let nextImageIndex=0;
-  const imageJobs=[...slides.map((item,i)=>async()=>{visualImages[i]=await findSlideImage(item);console.info("[Faizan AI] slide image",i+1,visualImages[i]?"found":"diagram fallback");}),
-   async()=>{coverImage.value=await fetchCommonsImage(topic+" medical anatomy illustration")||await fetchOpenImage(topic+" medical illustration");console.info("[Faizan AI] cover image",coverImage.value?"found":"not found");}];
-  const imageWorker=async()=>{
-   while(true){
-    const i=nextImageIndex++;
-    if(i>=imageJobs.length)return;
-    await imageJobs[i]();
-   }
-  };
-  await Promise.all(Array.from({length:Math.min(4,imageJobs.length)},()=>imageWorker()));
+  // Do not insert unverified stock photos. Build editable, topic-specific diagrams instead.
 
   const cover=pptx.addSlide();
   cover.background={color:navy};
-  cover.addText(clean(outline.title,topic),{x:.8,y:1.7,w:coverImage.value?6.1:11.3,h:1.5,fontFace:"Arial",fontSize:30,bold:true,color:"FFFFFF",fit:"shrink",breakLine:false});
-  cover.addText(clean(outline.subtitle,"Medical learning presentation"),{x:.85,y:3.5,w:coverImage.value?6.0:10.8,h:.5,fontFace:"Arial",fontSize:17,color:"D5E4F0"});
-  if(coverImage.value){
-   cover.addImage({data:`data:${coverImage.value.type};base64,${coverImage.value.data}`,x:7.2,y:1.45,w:5.3,h:4.8});
-   cover.addText((coverImage.value.name+" · "+coverImage.value.credit).slice(0,150),{x:7.2,y:6.35,w:5.3,h:.25,fontFace:"Arial",fontSize:6,color:"D5E4F0",fit:"shrink"});
-  }
+  cover.addText(clean(outline.title,topic),{x:.8,y:1.7,w:11.3,h:1.5,fontFace:"Arial",fontSize:30,bold:true,color:"FFFFFF",fit:"shrink",breakLine:false});
+  cover.addText(clean(outline.subtitle,"Medical learning presentation"),{x:.85,y:3.5,w:10.8,h:.5,fontFace:"Arial",fontSize:17,color:"D5E4F0"});
+
   cover.addText("Prepared with Faizan AI",{x:.85,y:6.65,w:5,h:.3,fontFace:"Arial",fontSize:11,color:"B8CDDF"});
   mark(cover);
   for(let i=0;i<slides.length;i++){
@@ -187,17 +128,9 @@ export async function POST(req:NextRequest){
    // Use literal bullet characters rather than PowerPoint bullet metadata.
    // This avoids first-character clipping in some PPTX-to-PDF converters.
    const text=bullets.map((b:string)=>"•  "+clean(b)).join("\n");
-   const visual=visualImages[i];
-   const hasImage=Boolean(visual);
-   if(text)s.addText(text,{x:.75,y:1.72,w:hasImage?4.05:5.3,h:4.65,fontFace:"Arial",fontSize:hasImage?15:16,color:"263849",breakLine:false,paraSpaceAfter:12,fit:"shrink",margin:.12,valign:"top",lineSpacingMultiple:1.05});
-   if(visual){
-    s.addImage({data:`data:${visual.type};base64,${visual.data}`,x:hasImage?5.0:6.35,y:1.55,w:hasImage?7.75:6.25,h:4.95});
-    s.addText((visual.name+" · "+visual.credit).slice(0,180),{x:hasImage?5.0:6.35,y:6.55,w:hasImage?7.75:6.25,h:.28,fontFace:"Arial",fontSize:6,color:"60788D",fit:"shrink"});
-    if(visual.animated)s.addText("ANIMATED · Plays in PowerPoint Slide Show",{x:hasImage?5.0:6.35,y:6.82,w:hasImage?7.75:6.25,h:.18,fontFace:"Arial",fontSize:7,bold:true,color:"2E6F9E",fit:"shrink"});
-   }else{
-    addAutoDiagram(s,item,navy);
-   }
-   if(item.visual)s.addText(clean(item.visual),{x:.9,y:6.55,w:hasImage?3.9:5.2,h:.3,fontFace:"Arial",fontSize:9,color:"2E6F9E",italic:true,fit:"shrink"});
+   if(text)s.addText(text,{x:.75,y:1.72,w:5.8,h:4.85,fontFace:"Arial",fontSize:15,color:"263849",breakLine:false,paraSpaceAfter:12,fit:"shrink",margin:.12,valign:"top",lineSpacingMultiple:1.05});
+   addAutoDiagram(s,item,topic,navy);
+   if(item.visual)s.addText(clean(item.visual),{x:.9,y:6.55,w:5.8,h:.3,fontFace:"Arial",fontSize:9,color:"2E6F9E",italic:true,fit:"shrink"});
    s.addText((i+1)+" / "+slides.length,{x:.65,y:7.12,w:.6,h:.18,fontFace:"Arial",fontSize:8,color:"8BA2B7",margin:0});
    mark(s);
   }
@@ -232,8 +165,7 @@ export async function POST(req:NextRequest){
   const out=await pptx.write({outputType:"nodebuffer"});
   const b=Buffer.isBuffer(out)?out:Buffer.from(out as ArrayBuffer);
   const ab=b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength) as ArrayBuffer;
-  const imageCount=visualImages.filter(Boolean).length;
-  return new NextResponse(ab,{headers:{"Content-Type":"application/vnd.openxmlformats-officedocument.presentationml.presentation","Content-Disposition":'attachment; filename="Faizan-AI-Presentation.pptx"',"Cache-Control":"no-store","X-Faizan-AI-Provider":result.provider,"X-Faizan-AI-Image-Count":String(imageCount),"X-Faizan-AI-Animated-Count":String(visualImages.filter(v=>v?.animated).length),"X-Faizan-AI-Slide-Count":String(slides.length)}});
+  return new NextResponse(ab,{headers:{"Content-Type":"application/vnd.openxmlformats-officedocument.presentationml.presentation","Content-Disposition":'attachment; filename="Faizan-AI-Presentation.pptx"',"Cache-Control":"no-store","X-Faizan-AI-Provider":result.provider,"X-Faizan-AI-Image-Count":"0","X-Faizan-AI-Animated-Count":"0","X-Faizan-AI-Slide-Count":String(slides.length)}});
  }catch(e){
   console.error("Presentation:",e);
   return NextResponse.json({error:e instanceof Error?e.message:"PowerPoint generation failed."},{status:502});
