@@ -187,7 +187,8 @@ export async function POST(req:NextRequest){
    if(text)s.addText(text,{x:.75,y:1.72,w:hasImage?4.05:5.3,h:4.65,fontFace:"Arial",fontSize:hasImage?15:16,color:"263849",breakLine:false,paraSpaceAfter:12,fit:"shrink",margin:.12,valign:"top",lineSpacingMultiple:1.05});
    if(visual){
     s.addImage({data:`data:${visual.type};base64,${visual.data}`,x:hasImage?5.0:6.35,y:1.55,w:hasImage?7.75:6.25,h:4.95});
-    s.addText((visual.name+" · "+visual.credit).slice(0,180),{x:hasImage?5.0:6.35,y:6.55,w:hasImage?7.75:6.25,h:.28,fontFace:"Arial",fontSize:6,color:"60788D",fit:"shrink"});\n    if(visual.animated)s.addText("ANIMATED · Plays in PowerPoint Slide Show",{x:hasImage?5.0:6.35,y:6.82,w:hasImage?7.75:6.25,h:.18,fontFace:"Arial",fontSize:7,bold:true,color:"2E6F9E",fit:"shrink"});
+    s.addText((visual.name+" · "+visual.credit).slice(0,180),{x:hasImage?5.0:6.35,y:6.55,w:hasImage?7.75:6.25,h:.28,fontFace:"Arial",fontSize:6,color:"60788D",fit:"shrink"});
+    if(visual.animated)s.addText("ANIMATED · Plays in PowerPoint Slide Show",{x:hasImage?5.0:6.35,y:6.82,w:hasImage?7.75:6.25,h:.18,fontFace:"Arial",fontSize:7,bold:true,color:"2E6F9E",fit:"shrink"});
    }else{
     addAutoDiagram(s,item,navy);
    }
