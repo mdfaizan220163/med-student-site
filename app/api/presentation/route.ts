@@ -209,7 +209,8 @@ export async function POST(req:NextRequest){
   const mark=(s:PptxGenJS.Slide)=>s.addText("FAIZAN AI",{x:10.15,y:7.13,w:2.45,h:.18,fontFace:"Arial",fontSize:8,bold:true,color:"8BA2B7",align:"right",margin:0});
 
   const slides=(outline.slides??[]).slice(0,count);
-  // Text-only mode: no image downloads, embedded images, or animations.\n  const cover=pptx.addSlide();
+  // Text-only mode: no image downloads, embedded images, or animations.
+  const cover=pptx.addSlide();
   cover.background={color:navy};
   cover.addText(clean(outline.title,topic),{x:.95,y:1.7,w:11.0,h:1.5,fontFace:"Arial",fontSize:28,bold:true,color:"FFFFFF",margin:[0.12,0.2,0.12,0.2],fit:"shrink"});
   cover.addText(clean(outline.subtitle,"Medical learning presentation"),{x:1.0,y:3.5,w:10.5,h:.6,fontFace:"Arial",fontSize:16,color:"D5E4F0",margin:.15,fit:"shrink"});
