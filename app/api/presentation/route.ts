@@ -60,7 +60,8 @@ async function fetchOpenImage(query:string):Promise<DeckImage|null>{
    const type=(img.headers.get("content-type")||"").split(";")[0].toLowerCase();
    if(!["image/jpeg","image/png","image/gif"].includes(type))continue;
    const bytes=Buffer.from(await img.arrayBuffer());
-   if(!bytes.length||bytes.length>6*1024*1024)continue;\n    const animated=type==="image/gif"&&bytes.toString("latin1").includes("NETSCAPE2.0");
+   if(!bytes.length||bytes.length>6*1024*1024)continue;
+    const animated=type==="image/gif"&&bytes.toString("latin1").includes("NETSCAPE2.0");
    const license=String(item.license||"").toUpperCase(),creator=String(item.creator||"Unknown creator").slice(0,80),title=String(item.title||"Open-license image").slice(0,80),page=String(item.foreign_landing_url||item.detail_url||""),licenseUrl=String(item.license_url||"");
    return {name:title,data:bytes.toString("base64"),type,credit:[creator,license,licenseUrl,page].filter(Boolean).join(" · "),animated};
   }
