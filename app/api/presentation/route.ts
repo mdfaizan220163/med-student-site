@@ -244,11 +244,11 @@ export async function POST(req:NextRequest){
    s.addText(clean(item.title,"Section "+(i+1)),{x:.95,y:.55,w:11.4,h:.82,fontFace:"Arial",fontSize:23,bold:true,color:navy,margin:[0.12,0.2,0.12,0.2],fit:"shrink"});
    const bullets=Array.isArray(item.bullets)?item.bullets.slice(0,5):[];
    // Separate bullet text boxes avoid rich-text run boundary clipping in PowerPoint.
-   const bulletTop=1.72, bulletGap=0.16, bulletHeight=(4.85-bulletGap*(bullets.length-1))/Math.max(bullets.length,1);
+   const bulletTop=1.72, bulletGap=0.16, bulletHeight=(4.95-bulletGap*(bullets.length-1))/Math.max(bullets.length,1);
    bullets.forEach((bullet,index)=>{
     const y=bulletTop+index*(bulletHeight+bulletGap);
     // Keep each bullet in one plain-text box to avoid lost characters at rich-text run boundaries.
-    s.addText("•  "+clean(bullet),{x:.98,y,w:5.85,h:bulletHeight,fontFace:"Arial",fontSize:14,color:"263849",fit:"shrink",margin:[0.08,0.08,0.08,0.08],valign:"middle"});
+    s.addText("•  "+clean(bullet),{x:.98,y,w:11.35,h:bulletHeight,fontFace:"Arial",fontSize:17,color:"263849",fit:"shrink",margin:[0.08,0.08,0.08,0.08],valign:"middle"});
    });
    const visual=visualAssets[i];
    if(visual){
