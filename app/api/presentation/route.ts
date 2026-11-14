@@ -260,19 +260,7 @@ export async function POST(req:NextRequest){
    }
    mark(rs);
   }
-  // Fast, editable final revision slide. No image-generation API call or extra API key required.
-  const summarySlide=pptx.addSlide();
-  summarySlide.background={color:"F7F1E5"};
-  summarySlide.addText("FINAL REVISION · "+topic,{x:.65,y:.35,w:12,h:.65,fontFace:"Arial",fontSize:24,bold:true,color:navy,fit:"shrink"});
-  const summaryItems=slides.slice(0,8).map(item=>({title:clean(item.title),points:(item.bullets||[]).slice(0,2).map(v=>clean(v))}));
-  summaryItems.forEach((item,i)=>{
-   const col=i%2,row=Math.floor(i/2),x=.65+col*6.15,y=1.25+row*1.35;
-   summarySlide.addShape("roundRect",{x,y,w:5.85,h:1.12,rectRadius:.08,line:{color:"D9E3EA",width:1},fill:{color:"FFFFFF"}});
-   summarySlide.addText(item.title,{x:x+.18,y:y+.12,w:5.5,h:.24,fontFace:"Arial",fontSize:11,bold:true,color:navy,fit:"shrink",margin:0});
-   summarySlide.addText(item.points.map(p=>"• "+p).join("\n"),{x:x+.18,y:y+.43,w:5.5,h:.58,fontFace:"Arial",fontSize:8,color:"263849",fit:"shrink",valign:"top",margin:0});
-  });
-  summarySlide.addText("Quick revision · Check detailed explanations and clinical facts against your textbook",{x:1,y:7.02,w:11,h:.2,fontFace:"Arial",fontSize:8,color:"60788D",align:"center",margin:0});
-  mark(summarySlide);
+
 
   const out=await pptx.write({outputType:"nodebuffer"});
   const b=Buffer.isBuffer(out)?out:Buffer.from(out as ArrayBuffer);
