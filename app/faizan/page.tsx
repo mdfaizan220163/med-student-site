@@ -16,7 +16,7 @@ export default function FaizanPage() {
         {/* Header */}
         <div className="mb-12">
           <h1 className="text-4xl font-bold text-gray-900 mb-3">
-            📚 Faizan's Research & Notes
+            📚 Faizan&apos;s Research & Notes
           </h1>
           <p className="text-gray-600">
             My collection of medical research papers, case studies, and study notes.
