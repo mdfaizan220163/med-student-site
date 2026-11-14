@@ -1,3 +1,4 @@
+/* eslint-disable @typescript-eslint/no-require-imports -- This standalone CommonJS service runs directly in Node.js inside Docker. */
 const express = require("express");
 const multer = require("multer");
 const fs = require("fs");
