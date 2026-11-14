@@ -123,7 +123,7 @@ export async function POST(req:NextRequest){
   const research=await recentPubMed(topic);
   const researchContext=research.length?JSON.stringify(research.map(({title,year,journal,pmid,doi,abstract})=>({title,year,journal,pmid,doi,abstract}))):"No recent PubMed abstracts were retrieved; do not invent recent research.";
   const textbookMap=/physiology|cardiac|heart|respirat|renal|neurophys/i.test(topic)?"Guyton and Hall Textbook of Medical Physiology":/patholog|inflammation|necrosis|neoplasm|hypersensitiv/i.test(topic)?"Robbins & Cotran Pathologic Basis of Disease":/anatom/i.test(topic)?"Gray's Anatomy":/pharm|drug|receptor|antibiotic/i.test(topic)?"Katzung & Trevor's Basic & Clinical Pharmacology":/microb|bacter|virus|fung|parasite/i.test(topic)?"Jawetz, Melnick & Adelberg's Medical Microbiology":"the most relevant standard MBBS textbook";
-  const prompt=`Create a medically accurate MBBS presentation in ${language} about ${topic}. Use ${textbookMap} as the primary textbook framework for established knowledge; do not invent page numbers or pretend to quote inaccessible textbook text. Recent PubMed records retrieved for this topic: ${researchContext}. Use only abstract-supported findings for recent research. Cite PMID/DOI next to each research-derived claim and mark it **RECENT RESEARCH** in bold. Distinguish established textbook knowledge from research findings. If abstracts are unavailable, do not make specific claims about those studies. Return only JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Create exactly ${count} slides, 3-5 concise bullets each. Include objectives, core concepts, clinical relevance, summary and review questions. Never invent citations or guidelines.`;
+  const prompt=`Create a medically accurate MBBS presentation in ${language} about ${topic}. Use ${textbookMap} as the primary textbook framework for established knowledge; do not invent page numbers or pretend to quote inaccessible textbook text. Recent PubMed records retrieved for this topic: ${researchContext}. Use only abstract-supported findings for recent research. Cite PMID/DOI next to each research-derived claim and mark it **RECENT RESEARCH** in bold. Distinguish established textbook knowledge from research findings. If abstracts are unavailable, do not make specific claims about those studies. Return only JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Create exactly ${count} slides, 3-5 concise bullets each. Include objectives, core concepts, clinical relevance, summary and review questions. For every mechanism or physiological/pathological process, give the correct chronological sequence with numbered steps or arrows; do not reorder stages or confuse cause, mediator, and effect. Check each sequence against established textbook physiology/pathology/pharmacology. Keep valves, pressure changes, timing, cell types, mediators and receptor names internally consistent. Never invent citations or guidelines.`;
   const system = "Create medically accurate MBBS slides. Return exactly one valid JSON object. Use double quotes for every key and string. No markdown fences, comments, or trailing commas. Required shape: {\"title\":\"...\",\"subtitle\":\"...\",\"slides\":[{\"title\":\"...\",\"bullets\":[\"...\"],\"visual\":\"...\"}]}";
   let result = await generateWithFallback([{role:"user",content:prompt}], system, provider, 5000);
   const parseOutline = (answer: string): {title?:string;subtitle?:string;slides?:Slide[]} => {
@@ -230,12 +230,8 @@ export async function POST(req:NextRequest){
    const bulletTop=1.72, bulletGap=0.16, bulletHeight=(4.85-bulletGap*(bullets.length-1))/Math.max(bullets.length,1);
    bullets.forEach((bullet,index)=>{
     const y=bulletTop+index*(bulletHeight+bulletGap);
-    s.addText("•",{x:.98,y:y+.02,w:.24,h:bulletHeight-.02,fontFace:"Arial",fontSize:14,bold:true,color:"477EAA",margin:0});
-    const value=clean(bullet),tag="RECENT RESEARCH",parts=value.split(tag);
-    const textRuns:{text:string;options?:{bold?:boolean;color?:string}}[]=[];
-    if(parts.length>1){textRuns.push({text:parts[0]});textRuns.push({text:tag,options:{bold:true,color:"9B3D26"}});if(parts.slice(1).join(tag))textRuns.push({text:parts.slice(1).join(tag)});}
-    else textRuns.push({text:value});
-    s.addText(textRuns,{x:1.28,y,w:5.15,h:bulletHeight,fontFace:"Arial",fontSize:14,color:"263849",fit:"shrink",margin:0,valign:"middle"});
+    // Keep each bullet in one plain-text box to avoid lost characters at rich-text run boundaries.
+    s.addText("•  "+clean(bullet),{x:.98,y,w:5.85,h:bulletHeight,fontFace:"Arial",fontSize:14,color:"263849",fit:"shrink",margin:[0.08,0.08,0.08,0.08],valign:"middle"});
    });
    const visual=visualAssets[i];
    if(visual){
@@ -267,13 +263,22 @@ export async function POST(req:NextRequest){
   textbookSlide.addText("Used as the standard subject reference framework. Consult your institution's assigned edition for exact chapter and page references; no page numbers are inferred.",{x:.85,y:2.25,w:11.5,h:.7,fontFace:"Arial",fontSize:12,color:"263849",fit:"shrink"});
   mark(textbookSlide);
 
-  // Recent research references are displayed separately from textbook foundations.
-  if(research.length){
-   const rs=pptx.addSlide();
-   rs.background={color:"FFFFFF"};
+  // Always show the research section, including an explicit no-results state.
+  {
+   const rs=pptx.addSlide();rs.background={color:"FFFFFF"};
    rs.addText("RECENT RESEARCH",{x:.7,y:.55,w:11.8,h:.55,fontFace:"Arial",fontSize:24,bold:true,color:"9B3D26",margin:0});
-   rs.addText("PubMed records retrieved for this topic · verify full methods and findings before clinical application",{x:.72,y:1.15,w:11.8,h:.3,fontFace:"Arial",fontSize:9,color:"60788D",margin:0});
-   research.forEach((p,i)=>{const y=1.7+i*1.0;rs.addText([{text:"RECENT RESEARCH · ",options:{bold:true,color:"9B3D26"}},{text:p.title,options:{bold:true,color:navy}}],{x:.8,y,w:11.7,h:.38,fontFace:"Arial",fontSize:11,fit:"shrink",margin:0});rs.addText([p.journal,p.year,p.doi?"DOI: "+p.doi:"PMID: "+p.pmid].filter(Boolean).join(" · "),{x:.82,y:y+.4,w:11.4,h:.22,fontFace:"Arial",fontSize:8,color:"60788D",margin:0});rs.addText("https://pubmed.ncbi.nlm.nih.gov/"+p.pmid+"/",{x:.82,y:y+.64,w:11.4,h:.2,fontFace:"Arial",fontSize:8,color:"2E6F9E",margin:0});});
+   rs.addText("Recent PubMed literature · separate from established textbook knowledge",{x:.72,y:1.15,w:11.8,h:.3,fontFace:"Arial",fontSize:9,color:"60788D",margin:0});
+   if(research.length){
+    research.slice(0,3).forEach((p,i)=>{
+     const y=1.62+i*1.72;
+     rs.addText(p.title,{x:.82,y,w:11.45,h:.38,fontFace:"Arial",fontSize:11,bold:true,color:navy,fit:"shrink",margin:[0.04,0.06,0.04,0.06]});
+     const abstractSummary=p.abstract.length>420?p.abstract.slice(0,417)+"…":p.abstract;
+     rs.addText(abstractSummary,{x:.84,y:y+.42,w:11.35,h:.72,fontFace:"Arial",fontSize:9,color:"263849",fit:"shrink",valign:"top",margin:[0.05,0.06,0.05,0.06]});
+     rs.addText([p.journal,p.year,p.doi?"DOI: "+p.doi:"PMID: "+p.pmid].filter(Boolean).join(" · ")+" · https://pubmed.ncbi.nlm.nih.gov/"+p.pmid+"/",{x:.84,y:y+1.18,w:11.35,h:.22,fontFace:"Arial",fontSize:8,color:"2E6F9E",fit:"shrink",margin:0});
+    });
+   }else{
+    rs.addText("No recent PubMed abstracts were retrieved for this topic during generation. No study-specific research claims are included. Retry later or search PubMed directly.",{x:.9,y:2.0,w:11.2,h:1.15,fontFace:"Arial",fontSize:16,color:"263849",fit:"shrink",valign:"top",margin:.12});
+   }
    mark(rs);
   }
   const visualCredits=visualAssets.filter((v):v is MedicalVisual=>!!v);
