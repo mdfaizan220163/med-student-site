@@ -61,7 +61,7 @@ export default function VlogsPage() {
               </p>
               
               <blockquote className="relative border-l-4 border-blue-600 pl-6 md:pl-8 italic bg-blue-50/50 py-6 pr-6 rounded-r-2xl my-8 text-gray-800 shadow-sm">
-                <span className="absolute top-2 left-2 text-6xl text-blue-200/50 font-serif leading-none">"</span>
+                <span className="absolute top-2 left-2 text-6xl text-blue-200/50 font-serif leading-none">&quot;</span>
                 <p className="relative z-10 text-lg md:text-xl">
                   Guys, my name is Mohammed Faizan and I am currently a third year MBBS student. I love anatomy and I love skull, and I love sketching, drawing and I love chocolates. I love coffee. I am just a random person not enough famous. So if you want to stick around with me and want to get me along, I will love you so much for that. And please visit my website which I created.
                 </p>
