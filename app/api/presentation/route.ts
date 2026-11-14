@@ -7,7 +7,7 @@ export const runtime="nodejs";
 export const maxDuration=120;
 
 type Slide={title:string;bullets:string[];visual?:string};
-type DeckImage={name:string;data:string;type:string;credit:string};
+type DeckImage={name:string;data:string;type:string;credit:string;animated:boolean};
 const stopWords=new Set(["the","and","for","with","from","into","about","medical","anatomy","diagram","image","illustration","showing","view","of","in","on","to","a","an","assessment","modern","methods","overview","introduction","principles","clinical","study","lecture"]);
 function tokens(value:string){
  return [...new Set(value.toLowerCase().replace(/[^a-z0-9\\s-]/g," ").split(/\\s+/).filter(w=>w.length>2&&!stopWords.has(w)))];
@@ -28,7 +28,7 @@ async function fetchCommonsImage(query:string):Promise<DeckImage|null>{
    const plain=(v:unknown)=>typeof v==="object"&&v!==null&&"value" in v?String((v as {value:unknown}).value).replace(/<[^>]*>/g," ").replace(/&amp;/g,"&").trim():"";
    const candidate=[String(page.title||""),plain(meta.ImageDescription),plain(meta.ObjectName)].join(" ");
    if(relevanceScore(query,candidate)<0.2)continue;
-   const imageUrl=info?.thumburl||info?.url;
+   const originalUrl=typeof info?.url==="string"?info.url:"";\n   const imageUrl=originalUrl.toLowerCase().includes(".gif")?originalUrl:(info?.thumburl||info?.url);
    if(typeof imageUrl!=="string"||!(imageUrl.startsWith("https://")||imageUrl.startsWith("http://")))continue;
    const img=await fetch(imageUrl,{signal:AbortSignal.timeout(4500)});
    if(!img.ok)continue;
@@ -38,7 +38,7 @@ async function fetchCommonsImage(query:string):Promise<DeckImage|null>{
    if(!bytes.length||bytes.length>5*1024*1024)continue;
    const artist=plain(meta.Artist)||"Wikimedia Commons contributor",license=plain(meta.LicenseShortName)||"Open license",licenseUrl=plain(meta.LicenseUrl);
    const pageUrl="https://commons.wikimedia.org/wiki/"+encodeURIComponent(String(page.title||"").replace(/ /g,"_"));
-   return {name:String(page.title||"Wikimedia Commons image").replace(/^File:/,"").slice(0,80),data:bytes.toString("base64"),type,credit:[artist,license,licenseUrl,pageUrl].filter(Boolean).join(" · ")};
+   return {name:String(page.title||"Wikimedia Commons image").replace(/^File:/,"").slice(0,80),data:bytes.toString("base64"),type,credit:[artist,license,licenseUrl,pageUrl].filter(Boolean).join(" · "),animated};
   }
  }catch(e){console.warn("Commons lookup:",e);}
  return null;
@@ -60,7 +60,7 @@ async function fetchOpenImage(query:string):Promise<DeckImage|null>{
    const bytes=Buffer.from(await img.arrayBuffer());
    if(!bytes.length||bytes.length>5*1024*1024)continue;
    const license=String(item.license||"").toUpperCase(),creator=String(item.creator||"Unknown creator").slice(0,80),title=String(item.title||"Open-license image").slice(0,80),page=String(item.foreign_landing_url||item.detail_url||""),licenseUrl=String(item.license_url||"");
-   return {name:title,data:bytes.toString("base64"),type,credit:[creator,license,licenseUrl,page].filter(Boolean).join(" · ")};
+   return {name:title,data:bytes.toString("base64"),type,credit:[creator,license,licenseUrl,page].filter(Boolean).join(" · "),animated};
   }
  }catch(e){console.warn("Openverse lookup:",e);}
  return null;
@@ -185,7 +185,7 @@ export async function POST(req:NextRequest){
    if(text)s.addText(text,{x:.75,y:1.72,w:hasImage?4.05:5.3,h:4.65,fontFace:"Arial",fontSize:hasImage?15:16,color:"263849",breakLine:false,paraSpaceAfter:12,fit:"shrink",margin:.12,valign:"top",lineSpacingMultiple:1.05});
    if(visual){
     s.addImage({data:`data:${visual.type};base64,${visual.data}`,x:hasImage?5.0:6.35,y:1.55,w:hasImage?7.75:6.25,h:4.95});
-    s.addText((visual.name+" · "+visual.credit).slice(0,180),{x:hasImage?5.0:6.35,y:6.55,w:hasImage?7.75:6.25,h:.28,fontFace:"Arial",fontSize:6,color:"60788D",fit:"shrink"});
+    s.addText((visual.name+" · "+visual.credit).slice(0,180),{x:hasImage?5.0:6.35,y:6.55,w:hasImage?7.75:6.25,h:.28,fontFace:"Arial",fontSize:6,color:"60788D",fit:"shrink"});\n    if(visual.animated)s.addText("ANIMATED · Plays in PowerPoint Slide Show",{x:hasImage?5.0:6.35,y:6.82,w:hasImage?7.75:6.25,h:.18,fontFace:"Arial",fontSize:7,bold:true,color:"2E6F9E",fit:"shrink"});
    }else{
     addAutoDiagram(s,item,navy);
    }
@@ -225,7 +225,7 @@ export async function POST(req:NextRequest){
   const b=Buffer.isBuffer(out)?out:Buffer.from(out as ArrayBuffer);
   const ab=b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength) as ArrayBuffer;
   const imageCount=visualImages.filter(Boolean).length;
-  return new NextResponse(ab,{headers:{"Content-Type":"application/vnd.openxmlformats-officedocument.presentationml.presentation","Content-Disposition":'attachment; filename="Faizan-AI-Presentation.pptx"',"Cache-Control":"no-store","X-Faizan-AI-Provider":result.provider,"X-Faizan-AI-Image-Count":String(imageCount),"X-Faizan-AI-Slide-Count":String(slides.length)}});
+  return new NextResponse(ab,{headers:{"Content-Type":"application/vnd.openxmlformats-officedocument.presentationml.presentation","Content-Disposition":'attachment; filename="Faizan-AI-Presentation.pptx"',"Cache-Control":"no-store","X-Faizan-AI-Provider":result.provider,"X-Faizan-AI-Image-Count":String(imageCount),"X-Faizan-AI-Animated-Count":String(visualImages.filter(v=>v?.animated).length),"X-Faizan-AI-Slide-Count":String(slides.length)}});
  }catch(e){
   console.error("Presentation:",e);
   return NextResponse.json({error:e instanceof Error?e.message:"PowerPoint generation failed."},{status:502});
