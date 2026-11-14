@@ -132,11 +132,11 @@ export async function POST(req:NextRequest){
    images.push({name:f.name,data:Buffer.from(await f.arrayBuffer()).toString("base64"),type:f.type});
   }
 
-  const sources=clean(form.get("sources"),"upload,web,ai").split(",").filter(Boolean);
+  const sources:string[]=[]; // Text-first mode: never fetch or embed images.
   const research=await recentPubMed(topic);
   const researchContext=research.length?JSON.stringify(research.map(({title,year,journal,pmid,doi,abstract})=>({title,year,journal,pmid,doi,abstract}))):"No recent PubMed abstracts were retrieved; do not invent recent research.";
   const textbookMap=/physiology|cardiac|heart|respirat|renal|neurophys/i.test(topic)?"Guyton and Hall Textbook of Medical Physiology":/patholog|inflammation|necrosis|neoplasm|hypersensitiv/i.test(topic)?"Robbins & Cotran Pathologic Basis of Disease":/anatom/i.test(topic)?"Gray's Anatomy":/pharm|drug|receptor|antibiotic/i.test(topic)?"Katzung & Trevor's Basic & Clinical Pharmacology":/microb|bacter|virus|fung|parasite/i.test(topic)?"Jawetz, Melnick & Adelberg's Medical Microbiology":"the most relevant standard MBBS textbook";
-  const prompt=`Create a medically accurate MBBS presentation in ${language} about ${topic}. Use ${textbookMap} as the primary textbook framework for established knowledge; do not invent page numbers or pretend to quote inaccessible textbook text. Recent PubMed records retrieved for this topic: ${researchContext}. Use only abstract-supported findings for recent research. Cite PMID/DOI next to each research-derived claim and mark it **RECENT RESEARCH** in bold. Distinguish established textbook knowledge from research findings. If abstracts are unavailable, do not make specific claims about those studies. Return only JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Create exactly ${count} slides, 3-5 concise bullets each. Include objectives, core concepts, clinical relevance, summary and review questions. For every mechanism or physiological/pathological process, give the correct chronological sequence with numbered steps or arrows; do not reorder stages or confuse cause, mediator, and effect. Check each sequence against established textbook physiology/pathology/pharmacology. Keep valves, pressure changes, timing, cell types, mediators and receptor names internally consistent. Never invent citations or guidelines.`;
+  const prompt=`Create a medically accurate MBBS presentation in ${language} about ${topic}. Use ${textbookMap} as the primary textbook framework for established knowledge; do not invent page numbers or pretend to quote inaccessible textbook text. Recent PubMed records retrieved for this topic: ${researchContext}. Use only abstract-supported findings for recent research. Cite PMID/DOI next to each research-derived claim and mark it **RECENT RESEARCH** in bold. Distinguish established textbook knowledge from research findings. If abstracts are unavailable, do not make specific claims about those studies. Spell-check every title and bullet character by character. Never omit the first or last letter of any word, never replace letters with spaces, and never output malformed words. Use complete standard medical terminology. Return only JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Create exactly ${count} slides, 3-5 concise bullets each. Include objectives, core concepts, clinical relevance, summary and review questions. For every mechanism or physiological/pathological process, give the correct chronological sequence with numbered steps or arrows; do not reorder stages or confuse cause, mediator, and effect. Check each sequence against established textbook physiology/pathology/pharmacology. Keep valves, pressure changes, timing, cell types, mediators and receptor names internally consistent. Never invent citations or guidelines.`;
   const system = "Create medically accurate MBBS slides. Return exactly one valid JSON object. Use double quotes for every key and string. No markdown fences, comments, or trailing commas. Required shape: {\"title\":\"...\",\"subtitle\":\"...\",\"slides\":[{\"title\":\"...\",\"bullets\":[\"...\"],\"visual\":\"...\"}]}";
   let result = await generateWithFallback([{role:"user",content:prompt}], system, provider, 5000);
   const parseOutline = (answer: string): {title?:string;subtitle?:string;slides?:Slide[]} => {
@@ -161,7 +161,7 @@ export async function POST(req:NextRequest){
   }
 
   // Mandatory AI quality checkpoint: never finalize an unreviewed deck.
-  const reviewPrompt=`Act as the final medical quality-control reviewer for an MBBS teaching presentation about "${topic}" in ${language}. Review EVERY slide. Check: (1) factual medical accuracy and terminology, (2) direct relevance to the requested topic, (3) correct mechanisms, sequences and relationships, (4) missing essential high-yield concepts, (5) duplication and logical order, (6) useful and medically relevant visual/diagram instructions. For every biological mechanism, explicitly verify the trigger, ordered steps, named cells/mediators/receptors, and final outcome; flag and correct any reversed, skipped, or conflated stage. For physiology, verify timing and pressure/flow/valve relationships. Do not approve a sequence merely because it sounds plausible; if uncertain, qualify it and avoid unsupported specifics. Correct errors; remove irrelevant content; improve weak slides. Preserve exactly ${count} slides. Return ONLY valid JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Each slide must have 3-5 concise bullets. Do not invent citations, references, guidelines or facts. If a fact is uncertain, phrase it cautiously. DRAFT TO REVIEW:\n${JSON.stringify(outline)}`;
+  const reviewPrompt=`Act as the final medical quality-control reviewer for an MBBS teaching presentation about "${topic}" in ${language}. Review EVERY slide. Check: (1) factual medical accuracy and terminology, (2) direct relevance to the requested topic, (3) correct mechanisms, sequences and relationships, (4) missing essential high-yield concepts, (5) duplication and logical order, (6) useful and medically relevant visual/diagram instructions. For every biological mechanism, explicitly verify the trigger, ordered steps, named cells/mediators/receptors, and final outcome; flag and correct any reversed, skipped, or conflated stage. For physiology, verify timing and pressure/flow/valve relationships. Perform a character-level proofreading pass on EVERY title and bullet: restore missing initial, internal, and final letters; correct accidental spaces inside words; remove malformed fragments; verify spelling of every medical term. Text must be complete and readable. Do not approve a sequence merely because it sounds plausible; if uncertain, qualify it and avoid unsupported specifics. Correct errors; remove irrelevant content; improve weak slides. Preserve exactly ${count} slides. Return ONLY valid JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Each slide must have 3-5 concise bullets. Do not invent citations, references, guidelines or facts. If a fact is uncertain, phrase it cautiously. DRAFT TO REVIEW:\n${JSON.stringify(outline)}`;
   const reviewSystem="You are the mandatory final quality-control reviewer for medical education slides. Be strict, verify each statement for standard MBBS-level medical accuracy, correct mistakes, remove irrelevant content and ensure every visual instruction matches the topic. Return one complete JSON object only, with exactly the requested slide count and required fields. No markdown.";
   let qualityCheckpointPassed=false;
   let reviewProvider=provider;
@@ -210,7 +210,7 @@ export async function POST(req:NextRequest){
 
   const slides=(outline.slides??[]).slice(0,count);
   // Retrieve topic-matched, openly licensed Commons visuals. Uploaded images are prioritized and distributed across slides.
-  const visualAssets:(MedicalVisual|null)[]=await Promise.all(slides.map(async(item,index)=>{
+  const visualAssets:(MedicalVisual|null)[]=slides.map(()=>null); /* Images are intentionally disabled in text-only mode. */\n  /*const unusedVisualAssets:(MedicalVisual|null)[]=await Promise.all(slides.map(async(item,index)=>{
    // Use each uploaded image once; never duplicate one unrelated upload across every slide.
    if(sources.includes("upload")&&images[index]){
     const im=images[index];
@@ -221,11 +221,11 @@ export async function POST(req:NextRequest){
    }
    return null;
   }));
-  const missingVisuals=visualAssets.map((v,i)=>v?null:(i+1)+": "+slides[i].title).filter(Boolean);
+  */\n  const missingVisuals:string[]=[];
   if(missingVisuals.length)return NextResponse.json({error:"Could not find a usable medical image for every slide. No incomplete deck was created. Missing: "+missingVisuals.join("; ")+" Enable image search or upload relevant images and try again."},{status:422});
   // Use silent animated GIFs only. GIF has no audio track, so the deck contains no voice or sound.
   let animatedAsset:MedicalVisual|null=null;
-  if(sources.includes("web"))animatedAsset=await fetchCommonsVisual(topic+" "+clean(slides[0]?.title),true);
+  animatedAsset=null;
 
 
 
@@ -298,7 +298,7 @@ export async function POST(req:NextRequest){
    }
    mark(rs);
   }
-  const visualCredits=visualAssets.filter((v):v is MedicalVisual=>!!v);
+  const visualCredits:MedicalVisual[]=[];
   if(visualCredits.length||animatedAsset){
    const creditSlide=pptx.addSlide();creditSlide.background={color:"FFFFFF"};
    creditSlide.addText("IMAGE & MEDIA CREDITS",{x:.7,y:.45,w:11.8,h:.5,fontFace:"Arial",fontSize:22,bold:true,color:navy});
