@@ -161,7 +161,7 @@ export async function POST(req:NextRequest){
   }
 
   // Mandatory AI quality checkpoint: never finalize an unreviewed deck.
-  const reviewPrompt=`Act as the final medical quality-control reviewer for an MBBS teaching presentation about "${topic}" in ${language}. Review EVERY slide. Check: (1) factual medical accuracy and terminology, (2) direct relevance to the requested topic, (3) correct mechanisms, sequences and relationships, (4) missing essential high-yield concepts, (5) duplication and logical order, (6) useful and medically relevant visual/diagram instructions. Correct errors; remove irrelevant content; improve weak slides. Preserve exactly ${count} slides. Return ONLY valid JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Each slide must have 3-5 concise bullets. Do not invent citations, references, guidelines or facts. If a fact is uncertain, phrase it cautiously. DRAFT TO REVIEW:\n${JSON.stringify(outline)}`;
+  const reviewPrompt=`Act as the final medical quality-control reviewer for an MBBS teaching presentation about "${topic}" in ${language}. Review EVERY slide. Check: (1) factual medical accuracy and terminology, (2) direct relevance to the requested topic, (3) correct mechanisms, sequences and relationships, (4) missing essential high-yield concepts, (5) duplication and logical order, (6) useful and medically relevant visual/diagram instructions. For every biological mechanism, explicitly verify the trigger, ordered steps, named cells/mediators/receptors, and final outcome; flag and correct any reversed, skipped, or conflated stage. For physiology, verify timing and pressure/flow/valve relationships. Do not approve a sequence merely because it sounds plausible; if uncertain, qualify it and avoid unsupported specifics. Correct errors; remove irrelevant content; improve weak slides. Preserve exactly ${count} slides. Return ONLY valid JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Each slide must have 3-5 concise bullets. Do not invent citations, references, guidelines or facts. If a fact is uncertain, phrase it cautiously. DRAFT TO REVIEW:\n${JSON.stringify(outline)}`;
   const reviewSystem="You are the mandatory final quality-control reviewer for medical education slides. Be strict, verify each statement for standard MBBS-level medical accuracy, correct mistakes, remove irrelevant content and ensure every visual instruction matches the topic. Return one complete JSON object only, with exactly the requested slide count and required fields. No markdown.";
   let qualityCheckpointPassed=false;
   let reviewProvider=provider;
@@ -211,11 +211,15 @@ export async function POST(req:NextRequest){
   const slides=(outline.slides??[]).slice(0,count);
   // Retrieve topic-matched, openly licensed Commons visuals. Uploaded images are prioritized and distributed across slides.
   const visualAssets:(MedicalVisual|null)[]=await Promise.all(slides.map(async(item,index)=>{
-   if(sources.includes("upload")&&images[index%Math.max(images.length,1)]){
-    const im=images[index%images.length];
+   // Use each uploaded image once; never duplicate one unrelated upload across every slide.
+   if(sources.includes("upload")&&images[index]){
+    const im=images[index];
     return {data:im.data,mime:im.type,title:im.name,page:"User-provided image",license:"User supplied",artist:"User supplied",animated:false};
    }
-   return await fetchCommonsVisual(topic+" "+item.title,false);
+   if(sources.includes("web")||sources.includes("ai")){
+    return await fetchCommonsVisual(topic+" "+item.title,false);
+   }
+   return null;
   }));
   const missingVisuals=visualAssets.map((v,i)=>v?null:(i+1)+": "+slides[i].title).filter(Boolean);
   if(missingVisuals.length)return NextResponse.json({error:"Could not find a usable medical image for every slide. No incomplete deck was created. Missing: "+missingVisuals.join("; ")+" Enable image search or upload relevant images and try again."},{status:422});
