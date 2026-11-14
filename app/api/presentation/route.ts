@@ -122,7 +122,7 @@ export async function POST(req:NextRequest){
   const system = "Create medically accurate MBBS slides. Return exactly one valid JSON object. Use double quotes for every key and string. No markdown fences, comments, or trailing commas. Required shape: {\"title\":\"...\",\"subtitle\":\"...\",\"slides\":[{\"title\":\"...\",\"bullets\":[\"...\"],\"visual\":\"...\"}]}";
   let result = await generateWithFallback([{role:"user",content:prompt}], system, provider, 5000);
   const parseOutline = (answer: string): {title?:string;subtitle?:string;slides?:Slide[]} => {
-    const cleaned = answer.replace(/^\\uFEFF/,"").replace(/^\x60\x60\x60(?:json)?\\s*/i,"").replace(/\\s*\x60\x60\x60$/,"").trim();
+    const cleaned = answer.replace(/^\uFEFF/,"").replace(/^\x60\x60\x60(?:json)?\s*/i,"").replace(/\s*\x60\x60\x60$/,"").trim();
     const first = cleaned.indexOf("{");
     const last = cleaned.lastIndexOf("}");
     if (first < 0 || last <= first) throw Error("AI did not return a JSON presentation outline.");
@@ -211,8 +211,9 @@ export async function POST(req:NextRequest){
    const bullets=Array.isArray(item.bullets)?item.bullets.slice(0,5):[];
    // Use literal bullet characters rather than PowerPoint bullet metadata.
    // This avoids first-character clipping in some PPTX-to-PDF converters.
-   const text=bullets.map((b:string)=>"•  "+clean(b)).join("\n");
-   if(text)s.addText(text,{x:.75,y:1.72,w:5.8,h:4.85,fontFace:"Arial",fontSize:15,color:"263849",breakLine:false,paraSpaceAfter:12,fit:"shrink",margin:.12,valign:"top",lineSpacingMultiple:1.05});
+   const runs:PptxGenJS.TextProps[]=[];
+   bullets.forEach((b:string,index:number)=>{runs.push({text:"•  "});const value=clean(b);const tag="RECENT RESEARCH";if(value.includes(tag)){const parts=value.split(tag);runs.push({text:parts[0]});runs.push({text:tag,options:{bold:true,color:"9B3D26"}});if(parts.slice(1).join(tag))runs.push({text:parts.slice(1).join(tag)});}else runs.push({text:value});if(index<bullets.length-1)runs.push({text:"\n"});});
+   if(runs.length)s.addText(runs,{x:.75,y:1.72,w:5.8,h:4.85,fontFace:"Arial",fontSize:15,color:"263849",breakLine:false,paraSpaceAfter:12,fit:"shrink",margin:.12,valign:"top",lineSpacingMultiple:1.05});
    const visual=visualAssets[i];
    if(visual){
     s.addImage({data:`data:${visual.mime};base64,${visual.data}`,x:7.05,y:1.8,w:5.55,h:4.55, sizing:"contain"});
