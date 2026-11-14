@@ -1,5 +1,6 @@
 import {NextRequest,NextResponse} from "next/server";
 import PptxGenJS from "pptxgenjs";
+import JSZip from "jszip";
 import {generateWithFallback} from "@/lib/ai-providers";
 import {createClient} from "@/lib/supabase/server";
 
@@ -264,6 +265,31 @@ export async function POST(req:NextRequest){
 
   const out=await pptx.write({outputType:"nodebuffer"});
   const b=Buffer.isBuffer(out)?out:Buffer.from(out as ArrayBuffer);
+
+  // Verify the text actually serialized into the PPTX XML before allowing download.
+  // This catches exporter-side character loss independently of the AI proofreading step.
+  const expectedText=[
+   clean(outline.title,topic),
+   clean(outline.subtitle,"Medical learning presentation"),
+   ...slides.flatMap((slide)=>[clean(slide.title),...(Array.isArray(slide.bullets)?slide.bullets.map((bullet)=>clean(bullet)):[])]),
+   textbookMap,
+   "TEXTBOOK FOUNDATION",
+   "RECENT RESEARCH"
+  ].filter(Boolean);
+  const zip=await JSZip.loadAsync(b);
+  const slideXml=Object.keys(zip.files).filter((name)=>/^ppt\\/slides\\/slide\\d+\\.xml$/.test(name));
+  const serializedText=(await Promise.all(slideXml.map(async(name)=>await zip.file(name)!.async("text")))).join("\\n");
+  const xmlDecode=(value:string)=>value.replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&apos;/g,"'");
+  const missingFromPptx=expectedText.filter((value)=>{
+   const escaped=value.replace(/&/g,"&amp;").replace(/</g,"&lt;").replace(/>/g,"&gt;");
+   return !xmlDecode(serializedText).includes(xmlDecode(escaped));
+  });
+  if(missingFromPptx.length){
+   console.error("[Faizan AI] PPTX text serialization check failed",missingFromPptx);
+   throw new Error("PowerPoint export failed its text-integrity check. No file was downloaded. Please retry; the affected text was: "+missingFromPptx.slice(0,5).join(" | "));
+  }
+  console.info("[Faizan AI] PPTX text-integrity check passed",expectedText.length,"text blocks");
+
   const ab=b.buffer.slice(b.byteOffset,b.byteOffset+b.byteLength) as ArrayBuffer;
   return new NextResponse(ab,{headers:{"Content-Type":"application/vnd.openxmlformats-officedocument.presentationml.presentation","Content-Disposition":'attachment; filename="Faizan-AI-Presentation.pptx"',"Cache-Control":"no-store","X-Faizan-AI-Provider":result.provider,"X-Faizan-AI-Image-Count":"0","X-Faizan-AI-Animated-Count":"0","X-Faizan-AI-Slide-Count":String(slides.length)}});
  }catch(e){
