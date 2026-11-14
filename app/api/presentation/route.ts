@@ -38,6 +38,22 @@ function addAutoDiagram(s:PptxGenJS.Slide,item:Slide,topic:string,navy:string){
   });
  }
 }
+
+type ResearchRef={title:string;year:string;journal:string;pmid:string;doi:string};
+async function recentPubMed(topic:string):Promise<ResearchRef[]>{
+ try{
+  const term=encodeURIComponent(topic+" AND ("last 5 years"[dp])");
+  const sr=await fetch("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esearch.fcgi?db=pubmed&retmode=json&sort=pub_date&retmax=6&term="+term,{signal:AbortSignal.timeout(10000)});
+  if(!sr.ok)return [];
+  const ids:string[]=(await sr.json())?.esearchresult?.idlist||[];
+  if(!ids.length)return [];
+  const er=await fetch("https://eutils.ncbi.nlm.nih.gov/entrez/eutils/esummary.fcgi?db=pubmed&retmode=json&id="+ids.join(","),{signal:AbortSignal.timeout(10000)});
+  if(!er.ok)return [];
+  const data=await er.json();
+  return ids.map(id=>data?.result?.[id]).filter(Boolean).map((p:any)=>({title:String(p.title||"").replace(/<[^>]*>/g,"").slice(0,180),year:String(p.pubdate||"").match(/20\d{2}/)?.[0]||"",journal:String(p.fulljournalname||p.source||"").slice(0,80),pmid:String(p.uid||""),doi:String((p.articleids||[]).find((a:any)=>a.idtype==="doi")?.value||"")})).filter((p:ResearchRef)=>p.title&&p.pmid).slice(0,5);
+ }catch(e){console.warn("[Faizan AI] PubMed lookup unavailable",e);return []}
+}
+
 export async function POST(req:NextRequest){
  try{
   const supabase=await createClient();
@@ -60,7 +76,7 @@ export async function POST(req:NextRequest){
    images.push({name:f.name,data:Buffer.from(await f.arrayBuffer()).toString("base64"),type:f.type});
   }
 
-  const prompt=`Create a medically accurate MBBS presentation in ${language} about ${topic}. Return only JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Create exactly ${count} slides, 3-5 concise bullets each. Include objectives, core concepts, clinical relevance, summary and review questions. Never invent citations or guidelines.`;
+  const research=await recentPubMed(topic);\n  const researchContext=research.length?JSON.stringify(research):"No recent PubMed records were retrieved; do not invent recent research.";\n  const prompt=`Create a medically accurate MBBS presentation in ${language} about ${topic}. Use the relevant standard textbook for established foundational knowledge. Recent PubMed records retrieved for this topic: ${researchContext}. Where relevant, explain recent findings accurately and distinguish them from established textbook knowledge. Mark every research-derived statement with the exact bold prefix **RECENT RESEARCH**. Do not infer findings from a title alone; only describe what the cited record supports. Return only JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Create exactly ${count} slides, 3-5 concise bullets each. Include objectives, core concepts, clinical relevance, summary and review questions. Never invent citations or guidelines.`;
   const system = "Create medically accurate MBBS slides. Return exactly one valid JSON object. Use double quotes for every key and string. No markdown fences, comments, or trailing commas. Required shape: {\"title\":\"...\",\"subtitle\":\"...\",\"slides\":[{\"title\":\"...\",\"bullets\":[\"...\"],\"visual\":\"...\"}]}";
   let result = await generateWithFallback([{role:"user",content:prompt}], system, provider, 5000);
   const parseOutline = (answer: string): {title?:string;subtitle?:string;slides?:Slide[]} => {
@@ -122,7 +138,7 @@ export async function POST(req:NextRequest){
   const mark=(s:PptxGenJS.Slide)=>s.addText("FAIZAN AI",{x:10.15,y:7.13,w:2.45,h:.18,fontFace:"Arial",fontSize:8,bold:true,color:"8BA2B7",align:"right",margin:0});
 
   const slides=(outline.slides??[]).slice(0,count);
-  // Do not insert unverified stock photos. Build editable, topic-specific diagrams instead.
+  // Visual and animation assets are added in the next implementation pass; keep generated diagrams until those assets are validated.
 
   const cover=pptx.addSlide();
   cover.background={color:navy};
@@ -161,7 +177,7 @@ export async function POST(req:NextRequest){
    mark(s);
   }
 
-  // Fast, editable final revision slide. No image-generation API call or extra API key required.
+  // Recent research references are displayed separately from textbook foundations.\n  if(research.length){\n   const rs=pptx.addSlide();\n   rs.background={color:"FFFFFF"};\n   rs.addText("RECENT RESEARCH",{x:.7,y:.55,w:11.8,h:.55,fontFace:"Arial",fontSize:24,bold:true,color:"9B3D26",margin:0});\n   rs.addText("PubMed records retrieved for this topic · verify full methods and findings before clinical application",{x:.72,y:1.15,w:11.8,h:.3,fontFace:"Arial",fontSize:9,color:"60788D",margin:0});\n   research.forEach((p,i)=>{const y=1.7+i*1.0;rs.addText([{text:"RECENT RESEARCH · ",options:{bold:true,color:"9B3D26"}},{text:p.title,options:{bold:true,color:navy}}],{x:.8,y,w:11.7,h:.38,fontFace:"Arial",fontSize:11,fit:"shrink",margin:0});rs.addText([p.journal,p.year,p.doi?"DOI: "+p.doi:"PMID: "+p.pmid].filter(Boolean).join(" · "),{x:.82,y:y+.4,w:11.4,h:.22,fontFace:"Arial",fontSize:8,color:"60788D",margin:0});rs.addText("https://pubmed.ncbi.nlm.nih.gov/"+p.pmid+"/",{x:.82,y:y+.64,w:11.4,h:.2,fontFace:"Arial",fontSize:8,color:"2E6F9E",margin:0});});\n   mark(rs);\n  }\n\n  // Fast, editable final revision slide. No image-generation API call or extra API key required.
   const summarySlide=pptx.addSlide();
   summarySlide.background={color:"F7F1E5"};
   summarySlide.addText("FINAL REVISION · "+topic,{x:.65,y:.35,w:12,h:.65,fontFace:"Arial",fontSize:24,bold:true,color:navy,fit:"shrink"});
