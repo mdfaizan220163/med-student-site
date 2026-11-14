@@ -14,7 +14,7 @@ export default function PresentationStudioPage(){
  const [loadingTip,setLoadingTip]=useState(0);
  const loadingTips=["Consulting the heart… it insists on having the final beat. 💓","Teaching the valves when to open and close. Boundaries matter. 🚪","Asking the mitochondria for a little extra ATP. ⚡","Checking the ECG for a good rhythm. No dancing yet. 📈","Counting slides, not sheep. Much more productive. 🐑","Making the diagrams look smarter than our Monday-morning brains. 🧠","One moment… even neurons need time to connect. 🔌"];
  useEffect(()=>()=>{if(downloadUrl)URL.revokeObjectURL(downloadUrl);},[downloadUrl]);
- useEffect(()=>{if(!busy)return;const timer=window.setInterval(()=>setLoadingTip(i=>(i+1)%loadingTips.length),3500);return()=>window.clearInterval(timer);},[busy]);
+ useEffect(()=>{if(!busy)return;const timer=window.setInterval(()=>setLoadingTip(i=>(i+1)%loadingTips.length),3500);return()=>window.clearInterval(timer);},[busy,loadingTips.length]);
  function toggle(id:Source){setSelected(old=>old.includes(id)?old.filter(x=>x!==id):[...old,id]);}
  function addFiles(e:React.ChangeEvent<HTMLInputElement>){setFiles(old=>[...old,...Array.from(e.target.files??[])].filter(f=>f.type.startsWith("image/")).slice(0,4));e.target.value="";}
  async function generate(){
