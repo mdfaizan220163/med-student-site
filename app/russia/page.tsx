@@ -187,14 +187,14 @@ export default function RussiaGuidePage() {
                 I lost around 3 lakh rupees to a currency exchange scam.
               </p>
               <p className="mb-4">
-                I needed to pay my fees. Formal transfers were failing. Someone I trusted offered to help me exchange at a "good rate." I transferred the money. It disappeared. No receipt. No proof. No way to recover it.
+                I needed to pay my fees. Formal transfers were failing. Someone I trusted offered to help me exchange at a &quot;good rate.&quot; I transferred the money. It disappeared. No receipt. No proof. No way to recover it.
               </p>
               <p className="mb-4">
                 I did not tell my parents for weeks. I had to find another way to pay my fees. The emotional damage was worse than the money.
               </p>
               <h3 className="text-xl font-semibold text-gray-900 mb-3 mt-6">Warning Signs of a Currency Scam</h3>
               <ul className="list-disc list-inside space-y-2 mb-4">
-                <li>Promises of "better than official" rates</li>
+                <li>Promises of &quot;better than official&quot; rates</li>
                 <li>Urgency and pressure to send quickly</li>
                 <li>No receipt, no documentation, no contract</li>
                 <li>Introduced by someone you barely know</li>
@@ -212,7 +212,7 @@ export default function RussiaGuidePage() {
                 <li>Never send the full amount at once</li>
               </ul>
               <p>
-                If this section saves even one student from losing their family's money, it was worth writing.
+                If this section saves even one student from losing their family&apos;s money, it was worth writing.
               </p>
             </section>
 
