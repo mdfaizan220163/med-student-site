@@ -2,11 +2,12 @@ import {NextRequest,NextResponse} from "next/server";
 import PptxGenJS from "pptxgenjs";
 import {generateWithFallback} from "@/lib/ai-providers";
 import {createClient} from "@/lib/supabase/server";
+import {getMedicalDiscipline, getSelectedTextbooks, getTextbookGuidance, getSlideVisualQuery as getMedicalSlideVisualQuery} from "@/lib/medical-curriculum";
 
 export const runtime="nodejs";
 export const maxDuration=240;
 
-type Slide={title:string;bullets:string[];visual?:string};
+type Slide={title:string;bullets:string[];visual?:string;visualType?:string};
 type DeckImage={name:string;data:string;type:string;credit:string;animated:boolean};
 const clean=(v:unknown,f="")=>typeof v==="string"?v.normalize("NFC").replace(/[\u0000-\u0008\u000B\u000C\u000E-\u001F\uFFFE\uFFFF]/g,"").trim():f;
 function addAutoDiagram(s:PptxGenJS.Slide,item:Slide,topic:string,navy:string){
@@ -137,9 +138,12 @@ export async function POST(req:NextRequest){
   }
 
   const sources=clean(form.get("sources"),"upload,web,ai").split(",").filter(Boolean);
+  const selectedBooks=getSelectedTextbooks(clean(form.get("textbooks"),"robbins,guyton,grays,harrison,lippincott,jawetz,bailey,bates"));
+  const textbookGuidance=getTextbookGuidance(topic,selectedBooks);
+  const discipline=getMedicalDiscipline(topic);
   const research=await recentPubMed(topic);
   const researchContext=research.length?JSON.stringify(research):"No recent PubMed records were retrieved; do not invent recent research.";
-  const prompt=`Create a medically accurate MBBS presentation in ${language} about ${topic}. Use the relevant standard textbook for established foundational knowledge. Recent PubMed records retrieved for this topic: ${researchContext}. Where relevant, explain recent findings accurately and distinguish them from established textbook knowledge. Mark every research-derived statement with the exact bold prefix **RECENT RESEARCH**. Do not infer findings from a title alone; only describe what the cited record supports. Return only JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Create exactly ${count} slides, 3-5 concise bullets each. Include objectives, core concepts, clinical relevance, summary and review questions. Never invent citations or guidelines.`;
+  const prompt=`Create a medically accurate MBBS presentation in ${language} about ${topic}. The inferred medical discipline is ${discipline}. ${textbookGuidance}\nRecent PubMed records retrieved for this topic: ${researchContext}. Where relevant, explain recent findings accurately and distinguish them from established textbook knowledge. Mark every research-derived statement with the exact bold prefix **RECENT RESEARCH**. Do not infer findings from a title alone; only describe what the cited record supports.\nCreate exactly ${count} slides with 3-5 concise, exam-useful bullets each. Use a topic-appropriate structure rather than forcing one template on every discipline. For pathology include gross and microscopic morphology when relevant; for anatomy include labeled relations and neurovascular supply; for microbiology include specimen, stain, culture and identification; for pharmacology include mechanism, uses, contraindications and adverse effects; for surgery include indications, procedure principles and complications; for clinical examination include examination sequence and positive/negative findings. Include a visualType for every slide, chosen from: histopathology, gross pathology, anatomy, radiology, microbiology, clinical diagram, flowchart, or general diagram. The visualType must describe the kind of image that genuinely belongs on that slide. Never call a schematic an actual photomicrograph. Return only JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"...","visualType":"..."}]}. Include objectives, core concepts, clinical relevance, summary and review questions. Never invent citations, book page numbers, editions, or guidelines.`;
   const system = "Create medically accurate MBBS slides. Return exactly one valid JSON object. Use double quotes for every key and string. No markdown fences, comments, or trailing commas. Required shape: {\"title\":\"...\",\"subtitle\":\"...\",\"slides\":[{\"title\":\"...\",\"bullets\":[\"...\"],\"visual\":\"...\"}]}";
   let result = await generateWithFallback([{role:"user",content:prompt}], system, provider, 5000);
   const parseOutline = (answer: string): {title?:string;subtitle?:string;slides?:Slide[]} => {
@@ -171,7 +175,7 @@ export async function POST(req:NextRequest){
     const bullets = Array.isArray(s?.bullets) ? s.bullets.map(x => clean(x)).filter(Boolean).slice(0, 5) : [];
     if (!title) throw new Error(`Slide ${index + 1} is missing a title.`);
     if (bullets.length < 3) throw new Error(`Slide ${index + 1} has fewer than 3 usable bullet points. Please regenerate the presentation.`);
-    return { title, bullets, visual: clean(s?.visual, `Create a topic-specific labeled medical diagram for ${title}.`) };
+    return { title, bullets, visual: clean(s?.visual, `Create a topic-specific labeled medical diagram for ${title}.`), visualType: clean(s?.visualType) };
   });
   if (checkedSlides.length !== count) {
     throw new Error(`The AI generated ${checkedSlides.length} slides, but ${count} were requested. Please retry or choose another AI provider.`);
@@ -202,7 +206,7 @@ export async function POST(req:NextRequest){
     const im=images[index%images.length];
     return {data:im.data,mime:im.type,title:im.name,page:"User-provided image",license:"User supplied",artist:"User supplied",animated:false};
    }
-   if(sources.includes("web"))return await fetchCommonsVisual(getSlideVisualQuery(topic,item.title),false);
+   if(sources.includes("web"))return await fetchCommonsVisual(getMedicalSlideVisualQuery(topic,item.title,item.visualType||item.visual),false);
    return null;
   }));
   // One optional GIF is embedded when Commons has a relevant animated medical asset.
@@ -232,7 +236,7 @@ export async function POST(req:NextRequest){
    const visual=visualAssets[i];
    if(visual){
     s.addImage({data:`data:${visual.mime};base64,${visual.data}`,x:7.05,y:1.8,w:5.55,h:4.55, sizing:{type:"contain",w:5.55,h:4.55}});
-    s.addText("VISUAL · "+visual.title.slice(0,90),{x:7.1,y:6.42,w:5.4,h:.24,fontFace:"Arial",fontSize:7,color:"60788D",fit:"shrink",margin:0});
+    s.addText((item.visualType?item.visualType.toUpperCase()+" · ":"VISUAL · ")+visual.title.slice(0,90),{x:7.1,y:6.42,w:5.4,h:.24,fontFace:"Arial",fontSize:7,color:"60788D",fit:"shrink",margin:0});
    }else addAutoDiagram(s,item,topic,navy);
    if(item.visual)s.addText(clean(item.visual),{x:.9,y:6.55,w:5.8,h:.3,fontFace:"Arial",fontSize:9,color:"2E6F9E",italic:true,fit:"shrink"});
    s.addText((i+1)+" / "+slides.length,{x:.65,y:7.12,w:.6,h:.18,fontFace:"Arial",fontSize:8,color:"8BA2B7",margin:0});
@@ -261,6 +265,15 @@ export async function POST(req:NextRequest){
    research.forEach((p,i)=>{const y=1.7+i*1.0;rs.addText([{text:"RECENT RESEARCH · ",options:{bold:true,color:"9B3D26"}},{text:p.title,options:{bold:true,color:navy}}],{x:.8,y,w:11.7,h:.38,fontFace:"Arial",fontSize:11,fit:"shrink",margin:0});rs.addText([p.journal,p.year,p.doi?"DOI: "+p.doi:"PMID: "+p.pmid].filter(Boolean).join(" · "),{x:.82,y:y+.4,w:11.4,h:.22,fontFace:"Arial",fontSize:8,color:"60788D",margin:0});rs.addText("https://pubmed.ncbi.nlm.nih.gov/"+p.pmid+"/",{x:.82,y:y+.64,w:11.4,h:.2,fontFace:"Arial",fontSize:8,color:"2E6F9E",margin:0});});
    mark(rs);
   }
+  // Show selected reference frameworks without implying that unuploaded textbook full text was retrieved.
+  const textbookSlide=pptx.addSlide();
+  textbookSlide.background={color:"FFFFFF"};
+  textbookSlide.addText("PREFERRED TEXTBOOK FRAMEWORKS",{x:.7,y:.55,w:11.8,h:.55,fontFace:"Arial",fontSize:23,bold:true,color:navy,margin:0});
+  textbookSlide.addText("Discipline: "+discipline.toUpperCase(),{x:.8,y:1.2,w:11.5,h:.25,fontFace:"Arial",fontSize:10,bold:true,color:"477EAA",margin:0});
+  selectedBooks.forEach((book,i)=>{const col=i%2,row=Math.floor(i/2),x=.85+col*6.0,y=1.8+row*.72;textbookSlide.addShape("roundRect",{x,y,w:5.55,h:.5,rectRadius:.06,line:{color:"D9E3EA",width:1},fill:{color:"F5F8FB"}});textbookSlide.addText(book,{x:x+.18,y:y+.13,w:5.2,h:.2,fontFace:"Arial",fontSize:10,bold:true,color:navy,fit:"shrink",margin:0});});
+  textbookSlide.addText("These are the student's preferred reference frameworks. Full-text access, edition details and page-specific citations require an uploaded or connected copy; no page numbers are inferred.",{x:.9,y:5.95,w:11.3,h:.55,fontFace:"Arial",fontSize:9,color:"60788D",fit:"shrink",margin:0});
+  mark(textbookSlide);
+
   const visualCredits=visualAssets.filter((v):v is MedicalVisual=>!!v);
   if(visualCredits.length||animatedAsset){
    const creditSlide=pptx.addSlide();creditSlide.background={color:"FFFFFF"};
