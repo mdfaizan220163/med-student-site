@@ -236,7 +236,7 @@ export async function POST(req:NextRequest){
    const visual=visualAssets[i];
    if(visual){
     s.addImage({data:`data:${visual.mime};base64,${visual.data}`,x:7.05,y:1.8,w:5.55,h:4.55, sizing:{type:"contain",w:5.55,h:4.55}});
-    s.addText("VISUAL · "+visual.title.slice(0,90),{x:7.1,y:6.42,w:5.4,h:.24,fontFace:"Arial",fontSize:7,color:"60788D",fit:"shrink",margin:0});
+    s.addText((item.visualType?item.visualType.toUpperCase()+" · ":"VISUAL · ")+visual.title.slice(0,90),{x:7.1,y:6.42,w:5.4,h:.24,fontFace:"Arial",fontSize:7,color:"60788D",fit:"shrink",margin:0});
    }else addAutoDiagram(s,item,topic,navy);
    if(item.visual)s.addText(clean(item.visual),{x:.9,y:6.55,w:5.8,h:.3,fontFace:"Arial",fontSize:9,color:"2E6F9E",italic:true,fit:"shrink"});
    s.addText((i+1)+" / "+slides.length,{x:.65,y:7.12,w:.6,h:.18,fontFace:"Arial",fontSize:8,color:"8BA2B7",margin:0});
@@ -265,6 +265,15 @@ export async function POST(req:NextRequest){
    research.forEach((p,i)=>{const y=1.7+i*1.0;rs.addText([{text:"RECENT RESEARCH · ",options:{bold:true,color:"9B3D26"}},{text:p.title,options:{bold:true,color:navy}}],{x:.8,y,w:11.7,h:.38,fontFace:"Arial",fontSize:11,fit:"shrink",margin:0});rs.addText([p.journal,p.year,p.doi?"DOI: "+p.doi:"PMID: "+p.pmid].filter(Boolean).join(" · "),{x:.82,y:y+.4,w:11.4,h:.22,fontFace:"Arial",fontSize:8,color:"60788D",margin:0});rs.addText("https://pubmed.ncbi.nlm.nih.gov/"+p.pmid+"/",{x:.82,y:y+.64,w:11.4,h:.2,fontFace:"Arial",fontSize:8,color:"2E6F9E",margin:0});});
    mark(rs);
   }
+  // Show selected reference frameworks without implying that unuploaded textbook full text was retrieved.
+  const textbookSlide=pptx.addSlide();
+  textbookSlide.background={color:"FFFFFF"};
+  textbookSlide.addText("PREFERRED TEXTBOOK FRAMEWORKS",{x:.7,y:.55,w:11.8,h:.55,fontFace:"Arial",fontSize:23,bold:true,color:navy,margin:0});
+  textbookSlide.addText("Discipline: "+discipline.toUpperCase(),{x:.8,y:1.2,w:11.5,h:.25,fontFace:"Arial",fontSize:10,bold:true,color:"477EAA",margin:0});
+  selectedBooks.forEach((book,i)=>{const col=i%2,row=Math.floor(i/2),x=.85+col*6.0,y=1.8+row*.72;textbookSlide.addShape("roundRect",{x,y,w:5.55,h:.5,rectRadius:.06,line:{color:"D9E3EA",width:1},fill:{color:"F5F8FB"}});textbookSlide.addText(book,{x:x+.18,y:y+.13,w:5.2,h:.2,fontFace:"Arial",fontSize:10,bold:true,color:navy,fit:"shrink",margin:0});});
+  textbookSlide.addText("These are the student's preferred reference frameworks. Full-text access, edition details and page-specific citations require an uploaded or connected copy; no page numbers are inferred.",{x:.9,y:5.95,w:11.3,h:.55,fontFace:"Arial",fontSize:9,color:"60788D",fit:"shrink",margin:0});
+  mark(textbookSlide);
+
   const visualCredits=visualAssets.filter((v):v is MedicalVisual=>!!v);
   if(visualCredits.length||animatedAsset){
    const creditSlide=pptx.addSlide();creditSlide.background={color:"FFFFFF"};
