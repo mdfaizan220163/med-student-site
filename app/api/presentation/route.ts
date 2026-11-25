@@ -11,9 +11,26 @@ const clean=(v:unknown,f="")=>typeof v==="string"?v.normalize("NFC").replace(/[\
 function addAutoDiagram(s:PptxGenJS.Slide,item:Slide,topic:string,navy:string){
  const title=clean(item.title);
  const bullets=(Array.isArray(item.bullets)?item.bullets:[]).slice(0,4).map(x=>clean(x).slice(0,100)).filter(Boolean);
- const cardiac=/cardiac cycle|heart cycle|ventricular systole|atrial systole/i.test(topic+" "+title);
- s.addText(cardiac?"CARDIAC CYCLE · MECHANICAL SEQUENCE":"CONCEPT MAP · KEY MECHANISM",{x:7.15,y:1.55,w:5.45,h:.3,fontFace:"Arial",fontSize:10,bold:true,color:"477EAA",charSpacing:1.1,fit:"shrink"});
- if(cardiac){
+ const combined=(topic+" "+title+" "+bullets.join(" ")).toLowerCase();
+ const inflammation=/acute inflammation|inflamm/.test(combined);
+ const cardiac=/cardiac cycle|heart cycle|ventricular systole|atrial systole/i.test(combined);
+ s.addText(inflammation?"ACUTE INFLAMMATION · PATHOLOGICAL MECHANISM":cardiac?"CARDIAC CYCLE · MECHANICAL SEQUENCE":"CONCEPT MAP · KEY MECHANISM",{x:7.15,y:1.55,w:5.45,h:.3,fontFace:"Arial",fontSize:10,bold:true,color:"477EAA",charSpacing:1.1,fit:"shrink"});
+ if(inflammation){
+  const vascular=/vascular|permeability|vasodilat|vessel/.test(combined);
+  const cellular=/cellular|leukocyte|neutrophil|chemotaxis|migration|extravasation/.test(combined);
+  const mediators=/mediator|histamine|prostaglandin|complement|cytokine/.test(combined);
+  const repair=/resolution|repair|healing|regeneration/.test(combined);
+  const labels=vascular?["Arteriolar vasodilation","Increased blood flow","Endothelial gaps open","Protein-rich exudate enters tissue"]:cellular?["Margination at vessel wall","Selectin-mediated rolling","Integrin-mediated adhesion","Diapedesis → chemotaxis"]:mediators?["Histamine · vasodilation","Prostaglandins · pain/fever","C3a/C5a · permeability","TNF / IL-1 · activation"]:repair?["Neutrophil apoptosis","Macrophage efferocytosis","Pro-resolving mediators","Regeneration or fibrosis"]:["Tissue injury / microbes","Vasodilation + permeability","Neutrophil recruitment","Elimination + repair"];
+  labels.forEach((label,i)=>{
+   const y=2.05+i*.94;
+   s.addShape("roundRect",{x:7.25,y,w:4.75,h:.65,line:{color:"C9D9E7",width:1},fill:{color:i%2?"F5F8FB":"EAF2F8"}});
+   s.addShape("ellipse",{x:7.48,y:y+.18,w:.28,h:.28,line:{color:"477EAA"},fill:{color:"477EAA"}});
+   s.addText(String(i+1),{x:7.48,y:y+.23,w:.28,h:.14,fontFace:"Arial",fontSize:8,bold:true,color:"FFFFFF",align:"center",margin:0});
+   s.addText(label,{x:7.95,y:y+.17,w:3.8,h:.28,fontFace:"Arial",fontSize:11,bold:true,color:navy,fit:"shrink",valign:"mid",margin:0});
+   if(i<3)s.addShape("line",{x:9.6,y:y+.65,w:0,h:.27,line:{color:"477EAA",width:1.5,endArrowType:"triangle"}});
+  });
+  s.addText("VASCULAR RESPONSE  →  CELLULAR RESPONSE  →  OUTCOME",{x:7.25,y:6.0,w:4.75,h:.35,fontFace:"Arial",fontSize:9,bold:true,color:"2E6F9E",fit:"shrink",align:"center"});
+ }else if(cardiac){
   const phases=["Atrial systole","Isovolumetric contraction","Ventricular ejection","Isovolumetric relaxation","Ventricular filling"];
   const desc=["AV valves open","All valves closed","Semilunar valves open","All valves closed","AV valves open"];
   phases.forEach((p,i)=>{
@@ -55,22 +72,24 @@ async function recentPubMed(topic:string):Promise<ResearchRef[]>{
 
 
 type MedicalVisual={data:string;mime:string;title:string;page:string;license:string;artist:string;animated:boolean};
-function getSlideVisualQuery(topic:string,title:string):string{
- const combined=(topic+" "+title).toLowerCase();
+function getSlideVisualQuery(topic:string,title:string,visual=""):string{
+ const combined=(topic+" "+title+" "+visual).toLowerCase();
  if(/acute inflammation|inflamm/.test(combined)){
-  if(/vascular|permeability|vasodilat/.test(combined))return "acute inflammation vascular changes vasodilation vascular permeability histology";
-  if(/cellular|leukocyte|neutrophil|chemotaxis|migration/.test(combined))return "neutrophil leukocyte extravasation acute inflammation histology";
-  if(/mediator|histamine|prostaglandin|complement|cytokine/.test(combined))return "acute inflammation chemical mediators histamine prostaglandin diagram";
-  if(/resolution|repair|healing|regeneration/.test(combined))return "acute inflammation resolution tissue repair histology";
-  return "acute inflammation histopathology neutrophils tissue micrograph";
+  if(/vascular|permeability|vasodilat|vessel/.test(combined))return "acute inflammation blood vessel vasodilation endothelial gaps histology";
+  if(/cellular|leukocyte|neutrophil|chemotaxis|migration|extravasation/.test(combined))return "neutrophil extravasation leukocyte migration acute inflammation";
+  if(/mediator|histamine|prostaglandin|complement|cytokine/.test(combined))return "inflammatory mediators histamine prostaglandin complement pathway";
+  if(/resolution|repair|healing|regeneration/.test(combined))return "acute inflammation resolution macrophage tissue repair";
+  if(/morpholog|microscop|histolog|exudate|pus|suppurat/.test(combined))return "acute inflammation histopathology neutrophils H&E micrograph";
+  return "acute inflammation histopathology tissue neutrophils H&E";
  }
- // Keep image-search queries concise; long concatenated prompts often return no results.
- return (topic+" "+title.replace(/[^a-zA-Z0-9 -]/g," ").replace(/\\s+/g," ").trim()).slice(0,110);
+ return (topic+" "+title+" "+visual).replace(/[^a-zA-Z0-9 -]/g," ").replace(/\\s+/g," ").trim().slice(0,100);
 }
 async function fetchCommonsVisual(query:string,preferGif=false):Promise<MedicalVisual|null>{
+  const terms=[query,query.replace(/histopathology|micrograph|H&E/gi,"").trim(),query.split(" ").slice(0,4).join(" "),query.split(" ").slice(0,2).join(" ")].filter((v,i,a)=>v.length>4&&a.indexOf(v)===i);
+  for(const term of terms){
   try{
-   const search=(preferGif?"filetype:gif ":"")+query;
-   const api="https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch="+encodeURIComponent(search)+"&gsrlimit=12&prop=imageinfo&iiprop=url|extmetadata|size&iiurlwidth=1400&format=json&origin=*";
+   const search=(preferGif?"filetype:gif ":"")+term;
+   const api="https://commons.wikimedia.org/w/api.php?action=query&generator=search&gsrnamespace=6&gsrsearch="+encodeURIComponent(search)+"&gsrlimit=30&prop=imageinfo&iiprop=url|extmetadata|size|mime&iiurlwidth=1400&format=json";
    const res=await fetch(api,{headers:{"User-Agent":"FaizanAIMedicalPresentation/1.0 (educational use)","Accept":"application/json"},signal:AbortSignal.timeout(12000)});
    if(res.ok){
     const json=await res.json();
@@ -91,7 +110,8 @@ async function fetchCommonsVisual(query:string,preferGif=false):Promise<MedicalV
      return {data:bytes.toString("base64"),mime,title:String(p.title||"Wikimedia Commons file"),page:"https://commons.wikimedia.org/wiki/"+encodeURIComponent(String(p.title||"").replace(/ /g,"_")),license:strip(meta.LicenseShortName)||"See source page for license",artist:strip(meta.Artist)||"Author listed on source page",animated:preferGif};
     }
    }
-  }catch(e){console.warn("[Faizan AI] Wikimedia image lookup failed",query,e)}
+  }catch(e){console.warn("[Faizan AI] Wikimedia image lookup failed",term,e)}
+  }
   if(preferGif)return null;
   // Openverse is a second independent source; it often finds educational cell
   // microscopy and anatomy images when Commons search returns no usable file.
@@ -202,12 +222,13 @@ export async function POST(req:NextRequest){
     const im=images[index%images.length];
     return {data:im.data,mime:im.type,title:im.name,page:"User-provided image",license:"User supplied",artist:"User supplied",animated:false};
    }
-   if(sources.includes("web"))return await fetchCommonsVisual(getSlideVisualQuery(topic,item.title),false);
+   if(sources.includes("web"))return await fetchCommonsVisual(getSlideVisualQuery(topic,item.title,item.visual),false);
    return null;
   }));
-  if(sources.includes("web")&&!visualAssets.some(Boolean)){
-   throw new Error("No suitable open-license image could be retrieved for this topic. Please try again, or upload your own relevant medical images. No image-free deck has been created.");
-  }
+  // A failed external image search must not cancel the whole presentation.
+  // Each slide still receives an editable, topic-specific PowerPoint diagram below.
+  const externalImageCount=visualAssets.filter(Boolean).length;
+  console.info("[Faizan AI] External medical images retrieved", {externalImageCount,totalSlides:slides.length});
   // One optional GIF is embedded when Commons has a relevant animated medical asset.
   let animatedAsset:MedicalVisual|null=null;
   if(sources.includes("web"))animatedAsset=await fetchCommonsVisual(topic+" "+clean(slides[0]?.title),true);
