@@ -1,7 +1,6 @@
 import {NextRequest,NextResponse} from "next/server";
 import PptxGenJS from "pptxgenjs";
 import {generateWithFallback} from "@/lib/ai-providers";
-import {createClient} from "@/lib/supabase/server";
 
 export const runtime="nodejs";
 export const maxDuration=240;
@@ -116,9 +115,8 @@ async function fetchCommonsVisual(query:string,preferGif=false):Promise<MedicalV
 
 export async function POST(req:NextRequest){
  try{
-  const supabase=await createClient();
-  const {data:{user}}=await supabase.auth.getUser();
-  if(!user)return NextResponse.json({error:"Please log in to create presentations.",loginRequired:true},{status:401});
+  // Public generation: authentication is intentionally not required for this tool.
+  // Keep input limits and provider-side safeguards in place to reduce accidental abuse.
 
   const form=await req.formData();
   const topic=clean(form.get("topic"));
