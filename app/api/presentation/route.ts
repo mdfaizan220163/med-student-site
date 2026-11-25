@@ -57,13 +57,15 @@ async function recentPubMed(topic:string):Promise<ResearchRef[]>{
 type MedicalVisual={data:string;mime:string;title:string;page:string;license:string;artist:string;animated:boolean};
 function getSlideVisualQuery(topic:string,title:string):string{
  const combined=(topic+" "+title).toLowerCase();
- if(/\bcell\b/.test(combined)){
-  if(/theory/.test(combined))return "cell theory biology Schleiden Schwann Virchow educational diagram";
-  if(/structure|organell|membrane|nucleus|cytoplasm/.test(combined))return "animal plant eukaryotic cell structure labelled biology diagram organelles";
-  if(/type|prokary|eukary|fundamental/.test(combined))return "prokaryotic versus eukaryotic cell types biology comparison diagram";
-  return "biology cell microscopy animal plant cell educational diagram";
+ if(/acute inflammation|inflamm/.test(combined)){
+  if(/vascular|permeability|vasodilat/.test(combined))return "acute inflammation vascular changes vasodilation vascular permeability histology";
+  if(/cellular|leukocyte|neutrophil|chemotaxis|migration/.test(combined))return "neutrophil leukocyte extravasation acute inflammation histology";
+  if(/mediator|histamine|prostaglandin|complement|cytokine/.test(combined))return "acute inflammation chemical mediators histamine prostaglandin diagram";
+  if(/resolution|repair|healing|regeneration/.test(combined))return "acute inflammation resolution tissue repair histology";
+  return "acute inflammation histopathology neutrophils tissue micrograph";
  }
- return topic+" "+title+" medical biology educational labelled diagram";
+ // Keep image-search queries concise; long concatenated prompts often return no results.
+ return (topic+" "+title.replace(/[^a-zA-Z0-9 -]/g," ").replace(/\\s+/g," ").trim()).slice(0,110);
 }
 async function fetchCommonsVisual(query:string,preferGif=false):Promise<MedicalVisual|null>{
   try{
@@ -137,7 +139,7 @@ export async function POST(req:NextRequest){
   const sources=clean(form.get("sources"),"upload,web,ai").split(",").filter(Boolean);
   const research=await recentPubMed(topic);
   const researchContext=research.length?JSON.stringify(research):"No recent PubMed records were retrieved; do not invent recent research.";
-  const prompt=`Create a medically accurate MBBS presentation in ${language} about ${topic}. Use the relevant standard textbook for established foundational knowledge. Recent PubMed records retrieved for this topic: ${researchContext}. Where relevant, explain recent findings accurately and distinguish them from established textbook knowledge. Mark every research-derived statement with the exact bold prefix **RECENT RESEARCH**. Do not infer findings from a title alone; only describe what the cited record supports. Return only JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Create exactly ${count} slides, 3-5 concise bullets each. Include objectives, core concepts, clinical relevance, summary and review questions. Never invent citations or guidelines.`;
+  const prompt=`Create a medically accurate MBBS teaching presentation in ${language} about this exact topic: "${topic}". STRICT TOPIC FIDELITY: every slide title, bullet, example, clinical condition, and visual must directly teach this topic. Do not drift into neighboring subjects or add unrelated diseases, case reports, or generic medical facts. Use a coherent textbook-style sequence: learning objectives, definition/classification, core mechanisms, morphology or key features, clinical correlations, diagnosis where relevant, management only if relevant, and concise review. Use precise standard medical terminology and explain mechanisms rather than vague statements. If a detail is uncertain, omit it instead of guessing. Do not create research claims or citations from article titles. Do not invent numerical values, guidelines, references, or facts. Return only JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Create exactly ${count-1} content slides (the cover is an additional first slide, making ${count} slides total), with 3-5 concise, topic-specific bullets per slide. The final content slide must be a summary with 2-3 review questions. Each visual field must describe a specific labeled medical illustration, histology image, anatomy image, or mechanism diagram that genuinely matches that slide.`;
   const system = "Create medically accurate MBBS slides. Return exactly one valid JSON object. Use double quotes for every key and string. No markdown fences, comments, or trailing commas. Required shape: {\"title\":\"...\",\"subtitle\":\"...\",\"slides\":[{\"title\":\"...\",\"bullets\":[\"...\"],\"visual\":\"...\"}]}";
   let result = await generateWithFallback([{role:"user",content:prompt}], system, provider, 5000);
   const parseOutline = (answer: string): {title?:string;subtitle?:string;slides?:Slide[]} => {
@@ -164,14 +166,14 @@ export async function POST(req:NextRequest){
   // Reliable local quality gate: do not make a second AI call a hard dependency.
   // The initial generation already requests medical accuracy; here we validate
   // the structure required for a complete, renderable teaching deck.
-  const checkedSlides = (outline.slides ?? []).slice(0, count).map((s, index) => {
+  const checkedSlides = (outline.slides ?? []).slice(0, count-1).map((s, index) => {
     const title = clean(s?.title);
     const bullets = Array.isArray(s?.bullets) ? s.bullets.map(x => clean(x)).filter(Boolean).slice(0, 5) : [];
     if (!title) throw new Error(`Slide ${index + 1} is missing a title.`);
     if (bullets.length < 3) throw new Error(`Slide ${index + 1} has fewer than 3 usable bullet points. Please regenerate the presentation.`);
     return { title, bullets, visual: clean(s?.visual, `Create a topic-specific labeled medical diagram for ${title}.`) };
   });
-  if (checkedSlides.length !== count) {
+  if (checkedSlides.length !== count-1) {
     throw new Error(`The AI generated ${checkedSlides.length} slides, but ${count} were requested. Please retry or choose another AI provider.`);
   }
   outline = {
@@ -193,7 +195,7 @@ export async function POST(req:NextRequest){
   const navy="102B4E";
   const mark=(s:PptxGenJS.Slide)=>s.addText("FAIZAN AI",{x:10.15,y:7.13,w:2.45,h:.18,fontFace:"Arial",fontSize:8,bold:true,color:"8BA2B7",align:"right",margin:0});
 
-  const slides=(outline.slides??[]).slice(0,count);
+  const slides=(outline.slides??[]).slice(0,count-1);
   // Retrieve topic-matched, openly licensed Commons visuals. Uploaded images are prioritized and distributed across slides.
   const visualAssets:(MedicalVisual|null)[]=await Promise.all(slides.map(async(item,index)=>{
    if(sources.includes("upload")&&images[index%Math.max(images.length,1)]){
@@ -203,6 +205,9 @@ export async function POST(req:NextRequest){
    if(sources.includes("web"))return await fetchCommonsVisual(getSlideVisualQuery(topic,item.title),false);
    return null;
   }));
+  if(sources.includes("web")&&!visualAssets.some(Boolean)){
+   throw new Error("No suitable open-license image could be retrieved for this topic. Please try again, or upload your own relevant medical images. No image-free deck has been created.");
+  }
   // One optional GIF is embedded when Commons has a relevant animated medical asset.
   let animatedAsset:MedicalVisual|null=null;
   if(sources.includes("web"))animatedAsset=await fetchCommonsVisual(topic+" "+clean(slides[0]?.title),true);
@@ -249,44 +254,6 @@ export async function POST(req:NextRequest){
    });
    mark(s);
   }
-
-  // Recent research references are displayed separately from textbook foundations.
-  if(research.length){
-   const rs=pptx.addSlide();
-   rs.background={color:"FFFFFF"};
-   rs.addText("RECENT RESEARCH",{x:.7,y:.55,w:11.8,h:.55,fontFace:"Arial",fontSize:24,bold:true,color:"9B3D26",margin:0});
-   rs.addText("PubMed records retrieved for this topic · verify full methods and findings before clinical application",{x:.72,y:1.15,w:11.8,h:.3,fontFace:"Arial",fontSize:9,color:"60788D",margin:0});
-   research.forEach((p,i)=>{const y=1.7+i*1.0;rs.addText([{text:"RECENT RESEARCH · ",options:{bold:true,color:"9B3D26"}},{text:p.title,options:{bold:true,color:navy}}],{x:.8,y,w:11.7,h:.38,fontFace:"Arial",fontSize:11,fit:"shrink",margin:0});rs.addText([p.journal,p.year,p.doi?"DOI: "+p.doi:"PMID: "+p.pmid].filter(Boolean).join(" · "),{x:.82,y:y+.4,w:11.4,h:.22,fontFace:"Arial",fontSize:8,color:"60788D",margin:0});rs.addText("https://pubmed.ncbi.nlm.nih.gov/"+p.pmid+"/",{x:.82,y:y+.64,w:11.4,h:.2,fontFace:"Arial",fontSize:8,color:"2E6F9E",margin:0});});
-   mark(rs);
-  }
-  const visualCredits=visualAssets.filter((v):v is MedicalVisual=>!!v);
-  if(visualCredits.length||animatedAsset){
-   const creditSlide=pptx.addSlide();creditSlide.background={color:"FFFFFF"};
-   creditSlide.addText("IMAGE & MEDIA CREDITS",{x:.7,y:.45,w:11.8,h:.5,fontFace:"Arial",fontSize:22,bold:true,color:navy});
-   const credits=[...visualCredits,...(animatedAsset?[animatedAsset]:[])];
-   credits.slice(0,18).forEach((v,i)=>{const y=1.15+i*.31;creditSlide.addText([{text:(i+1)+". "+v.title+" · ",options:{bold:true}},{text:v.license+" · "+v.artist+" · "+(v.animated?"ANIMATED GIF":"image"),options:{}}],{x:.8,y,w:11.6,h:.2,fontFace:"Arial",fontSize:7,color:"263849",fit:"shrink",margin:0});creditSlide.addText(v.page,{x:.8,y:y+.14,w:11.6,h:.13,fontFace:"Arial",fontSize:6,color:"2E6F9E",fit:"shrink",margin:0});});
-   mark(creditSlide);
-  }
-  if(animatedAsset){
-   const mediaSlide=pptx.addSlide();mediaSlide.background={color:"FFFFFF"};
-   mediaSlide.addText("ANIMATED MEDICAL MEDIA",{x:.7,y:.55,w:11.8,h:.55,fontFace:"Arial",fontSize:23,bold:true,color:navy});
-   mediaSlide.addImage({data:`data:image/gif;base64,${animatedAsset.data}`,x:2.1,y:1.55,w:9.1,h:4.9,sizing:{type:"contain",w:9.1,h:4.9}});
-   mediaSlide.addText("Embedded animated GIF · Play in PowerPoint Slide Show",{x:1.1,y:6.65,w:11,h:.25,fontFace:"Arial",fontSize:9,color:"60788D",align:"center"});
-   mark(mediaSlide);
-  }
-  // Fast, editable final revision slide. No image-generation API call or extra API key required.
-  const summarySlide=pptx.addSlide();
-  summarySlide.background={color:"F7F1E5"};
-  summarySlide.addText("FINAL REVISION · "+topic,{x:.65,y:.35,w:12,h:.65,fontFace:"Arial",fontSize:24,bold:true,color:navy,fit:"shrink"});
-  const summaryItems=slides.slice(0,8).map(item=>({title:clean(item.title),points:(item.bullets||[]).slice(0,2).map(v=>clean(v))}));
-  summaryItems.forEach((item,i)=>{
-   const col=i%2,row=Math.floor(i/2),x=.65+col*6.15,y=1.25+row*1.35;
-   summarySlide.addShape("roundRect",{x,y,w:5.85,h:1.12,rectRadius:.08,line:{color:"D9E3EA",width:1},fill:{color:"FFFFFF"}});
-   summarySlide.addText(item.title,{x:x+.18,y:y+.12,w:5.5,h:.24,fontFace:"Arial",fontSize:11,bold:true,color:navy,fit:"shrink",margin:0});
-   summarySlide.addText(item.points.map(p=>"• "+p).join("\n"),{x:x+.18,y:y+.43,w:5.5,h:.58,fontFace:"Arial",fontSize:8,color:"263849",fit:"shrink",valign:"top",margin:0});
-  });
-  summarySlide.addText("Quick revision · Check detailed explanations and clinical facts against your textbook",{x:1,y:7.02,w:11,h:.2,fontFace:"Arial",fontSize:8,color:"60788D",align:"center",margin:0});
-  mark(summarySlide);
 
   const out=await pptx.write({outputType:"nodebuffer"});
   const b=Buffer.isBuffer(out)?out:Buffer.from(out as ArrayBuffer);
