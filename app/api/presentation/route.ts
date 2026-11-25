@@ -41,7 +41,7 @@ function addAutoDiagram(s:PptxGenJS.Slide,item:Slide,topic:string,navy:string){
    s.addText("Hemorrhage / blister",{x:7.3,y:4.65,w:2.3,h:.35,fontFace:"Arial",fontSize:9,bold:true,color:navy,align:"center",fit:"shrink"});
    s.addShape("rect",{x:10.28,y:2.7,w:1.95,h:.35,line:{color:"C58A43"},fill:{color:"F3D8A8"}});
    s.addShape("rect",{x:10.28,y:3.08,w:1.95,h:.35,line:{color:"9B6A6A"},fill:{color:"E7B9B9"}});
-   s.addShape("line",{x:10.28,y:3.04,w:1.95,h:0,line:{color:"A94B4B",width:2,dash:"dash"}});
+   s.addShape("line",{x:10.28,y:3.04,w:1.95,h:0,line:{color:"A94B4B",width:2}});
    s.addText("Crescent / split plane",{x:10.18,y:4.65,w:2.3,h:.35,fontFace:"Arial",fontSize:9,bold:true,color:navy,align:"center",fit:"shrink"});
   }else if(typeIII){
    s.addShape("ellipse",{x:7.72,y:2.55,w:1.45,h:1.45,line:{color:"A94B4B",width:9},fill:{color:"F8E7E4"}});
