@@ -12,8 +12,53 @@ function addAutoDiagram(s:PptxGenJS.Slide,item:Slide,topic:string,navy:string){
  const title=clean(item.title);
  const bullets=(Array.isArray(item.bullets)?item.bullets:[]).slice(0,4).map(x=>clean(x).slice(0,100)).filter(Boolean);
  const combined=(topic+" "+title+" "+bullets.join(" ")).toLowerCase();
+ const hypersensitivity=/hypersensitivity/.test(combined);
  const inflammation=/acute inflammation|inflamm/.test(combined);
  const cardiac=/cardiac cycle|heart cycle|ventricular systole|atrial systole/i.test(combined);
+ if(hypersensitivity){
+  const typeI=/type i|bronchial asthma|anaphylaxis|urticaria/i.test(combined);
+  const typeII=/type ii|goodpasture|pemphigus|pemphigoid/i.test(combined);
+  const typeIII=/type iii|vasculitis|lupus nephritis/i.test(combined);
+  const tb=/tuberculosis/i.test(combined);
+  const leftTitle=tb?"GROSS · CASEATING LUNG LESION":typeI?"GROSS · ORGAN / SKIN LESION":typeII?"GROSS · TARGET-ORGAN LESION":"GROSS · VASCULAR / RENAL LESION";
+  const rightTitle=tb?"MICROSCOPY · GRANULOMA":typeI?"MICROSCOPY · EDEMA / EOSINOPHILS":typeII?"MICROSCOPY · NECROSIS / BLISTER":"MICROSCOPY · TISSUE INJURY";
+  s.addText(leftTitle,{x:7.18,y:1.55,w:2.55,h:.35,fontFace:"Arial",fontSize:9,bold:true,color:"477EAA",fit:"shrink"});
+  s.addText(rightTitle,{x:10.02,y:1.55,w:2.55,h:.35,fontFace:"Arial",fontSize:9,bold:true,color:"477EAA",fit:"shrink"});
+  s.addShape("roundRect",{x:7.15,y:1.98,w:2.65,h:3.75,line:{color:"C9D9E7",width:1},fill:{color:"F8FAFC"}});
+  s.addShape("roundRect",{x:9.98,y:1.98,w:2.65,h:3.75,line:{color:"C9D9E7",width:1},fill:{color:"F8FAFC"}});
+  if(typeI){
+   // Paired lung lobes with central bronchus; red plugs mark obstructed airways.
+   s.addShape("ellipse",{x:7.45,y:2.55,w:.85,h:1.75,line:{color:"8EAFC2",width:1.5},fill:{color:"E6F0F4"}});
+   s.addShape("ellipse",{x:8.45,y:2.55,w:.85,h:1.75,line:{color:"8EAFC2",width:1.5},fill:{color:"E6F0F4"}});
+   s.addShape("rect",{x:8.25,y:2.18,w:.25,h:.8,line:{color:"8EAFC2"},fill:{color:"E6F0F4"}});
+   [0,1,2].forEach(i=>s.addShape("ellipse",{x:7.72+i*.48,y:3.2+(i%2)*.25,w:.16,h:.16,line:{color:"B65A48"},fill:{color:"B65A48"}}));
+   s.addText("Mucus plugs · overinflation",{x:7.32,y:4.65,w:2.3,h:.35,fontFace:"Arial",fontSize:9,bold:true,color:navy,align:"center",fit:"shrink"});
+   for(let i=0;i<14;i++)s.addShape("ellipse",{x:10.25+(i%4)*.43,y:2.55+Math.floor(i/4)*.48,w:.12,h:.12,line:{color:"C58A43"},fill:{color:"E7BD7C"}});
+   s.addText("Eosinophils · edema",{x:10.2,y:4.65,w:2.2,h:.35,fontFace:"Arial",fontSize:9,bold:true,color:navy,align:"center",fit:"shrink"});
+  }else if(typeII){
+   s.addShape("ellipse",{x:7.45,y:2.55,w:1.05,h:1.55,line:{color:"9A6A66",width:1.5},fill:{color:"E6B7B2"}});
+   s.addShape("ellipse",{x:8.05,y:2.9,w:.42,h:.62,line:{color:"9A6A66"},fill:{color:"A94B4B"}});
+   s.addText("Hemorrhage / blister",{x:7.3,y:4.65,w:2.3,h:.35,fontFace:"Arial",fontSize:9,bold:true,color:navy,align:"center",fit:"shrink"});
+   s.addShape("rect",{x:10.28,y:2.7,w:1.95,h:.35,line:{color:"C58A43"},fill:{color:"F3D8A8"}});
+   s.addShape("rect",{x:10.28,y:3.08,w:1.95,h:.35,line:{color:"9B6A6A"},fill:{color:"E7B9B9"}});
+   s.addShape("line",{x:10.28,y:3.04,w:1.95,h:0,line:{color:"A94B4B",width:2,dash:"dash"}});
+   s.addText("Crescent / split plane",{x:10.18,y:4.65,w:2.3,h:.35,fontFace:"Arial",fontSize:9,bold:true,color:navy,align:"center",fit:"shrink"});
+  }else if(typeIII){
+   s.addShape("ellipse",{x:7.72,y:2.55,w:1.45,h:1.45,line:{color:"A94B4B",width:9},fill:{color:"F8E7E4"}});
+   s.addShape("ellipse",{x:8.18,y:3.01,w:.53,h:.53,line:{color:"A94B4B",width:1.5},fill:{color:"FFFFFF"}});
+   s.addText("Damaged vessel wall",{x:7.3,y:4.65,w:2.3,h:.35,fontFace:"Arial",fontSize:9,bold:true,color:navy,align:"center",fit:"shrink"});
+   for(let i=0;i<10;i++)s.addShape("ellipse",{x:10.35+(i%4)*.38,y:2.55+Math.floor(i/4)*.4,w:.2,h:.2,line:{color:"9A6A66"},fill:{color:"D8A5A0"}});
+   s.addText("Inflammatory cells",{x:10.18,y:4.65,w:2.3,h:.35,fontFace:"Arial",fontSize:9,bold:true,color:navy,align:"center",fit:"shrink"});
+  }else{
+   s.addShape("ellipse",{x:7.5,y:2.55,w:1.5,h:1.5,line:{color:"8A7766",width:1.5},fill:{color:"D9C5A1"}});
+   s.addShape("ellipse",{x:7.86,y:2.91,w:.78,h:.78,line:{color:"A58B6C",width:1},fill:{color:"BDA47D"}});
+   s.addText("Caseous center",{x:7.3,y:4.65,w:2.3,h:.35,fontFace:"Arial",fontSize:9,bold:true,color:navy,align:"center",fit:"shrink"});
+   for(let i=0;i<12;i++)s.addShape("ellipse",{x:10.3+(i%4)*.42,y:2.55+Math.floor(i/4)*.42,w:.18,h:.18,line:{color:"7D9A82"},fill:{color:"B9CDBB"}});
+   s.addText("Epithelioid cells · giant cells",{x:10.12,y:4.65,w:2.35,h:.35,fontFace:"Arial",fontSize:8,bold:true,color:navy,align:"center",fit:"shrink"});
+  }
+  s.addText("SCHEMATIC MORPHOLOGY — NOT A PATIENT SPECIMEN PHOTOGRAPH",{x:7.3,y:5.95,w:5.25,h:.35,fontFace:"Arial",fontSize:8,color:"60788D",italic:true,align:"center",fit:"shrink"});
+  return;
+ }
  s.addText(inflammation?"ACUTE INFLAMMATION · PATHOLOGICAL MECHANISM":cardiac?"CARDIAC CYCLE · MECHANICAL SEQUENCE":"CONCEPT MAP · KEY MECHANISM",{x:7.15,y:1.55,w:5.45,h:.3,fontFace:"Arial",fontSize:10,bold:true,color:"477EAA",charSpacing:1.1,fit:"shrink"});
  if(inflammation){
   const vascular=/vascular|permeability|vasodilat|vessel/.test(combined);
@@ -74,6 +119,17 @@ async function recentPubMed(topic:string):Promise<ResearchRef[]>{
 type MedicalVisual={data:string;mime:string;title:string;page:string;license:string;artist:string;animated:boolean};
 function getSlideVisualQuery(topic:string,title:string,visual=""):string{
  const combined=(topic+" "+title+" "+visual).toLowerCase();
+ if(/hypersensitivity/.test(combined)){
+  if(/bronchial asthma|type i: immediate hypersensitivity — bronchial/i.test(combined))return "bronchial asthma gross pathology lung mucus plugs Curschmann spirals eosinophils histology";
+  if(/anaphylaxis|urticaria/i.test(combined))return "urticaria skin histopathology dermal edema wheal laryngeal edema";
+  if(/goodpasture/i.test(combined))return "Goodpasture syndrome pulmonary hemorrhage lung gross crescentic glomerulonephritis histology";
+  if(/pemphigus|pemphigoid|blister/i.test(combined))return "pemphigus vulgaris bullous pemphigoid histopathology suprabasal acantholysis subepidermal blister";
+  if(/vasculitis/i.test(combined))return "fibrinoid necrosis vasculitis histopathology gross artery aneurysm";
+  if(/lupus nephritis/i.test(combined))return "lupus nephritis wire loop glomeruli histopathology immunofluorescence";
+  if(/tuberculosis/i.test(combined))return "tuberculosis lung gross caseating granuloma histopathology Langhans giant cells";
+  if(/contact dermatitis/i.test(combined))return "allergic contact dermatitis skin histopathology spongiosis vesicles";
+  return "hypersensitivity reaction pathological anatomy gross specimen histopathology tissue lesion";
+ }
  if(/acute inflammation|inflamm/.test(combined)){
   if(/vascular|permeability|vasodilat|vessel/.test(combined))return "acute inflammation blood vessel vasodilation endothelial gaps histology";
   if(/cellular|leukocyte|neutrophil|chemotaxis|migration|extravasation/.test(combined))return "neutrophil extravasation leukocyte migration acute inflammation";
@@ -159,7 +215,20 @@ export async function POST(req:NextRequest){
   const sources=clean(form.get("sources"),"upload,web,ai").split(",").filter(Boolean);
   const research=await recentPubMed(topic);
   const researchContext=research.length?JSON.stringify(research):"No recent PubMed records were retrieved; do not invent recent research.";
-  const prompt=`Create a medically accurate MBBS teaching presentation in ${language} about this exact topic: "${topic}". STRICT TOPIC FIDELITY: every slide title, bullet, example, clinical condition, and visual must directly teach this topic. Do not drift into neighboring subjects or add unrelated diseases, case reports, or generic medical facts. Use a coherent textbook-style sequence: learning objectives, definition/classification, core mechanisms, morphology or key features, clinical correlations, diagnosis where relevant, management only if relevant, and concise review. Use precise standard medical terminology and explain mechanisms rather than vague statements. If a detail is uncertain, omit it instead of guessing. Do not create research claims or citations from article titles. Do not invent numerical values, guidelines, references, or facts. Return only JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Create exactly ${count-1} content slides (the cover is an additional first slide, making ${count} slides total), with 3-5 concise, topic-specific bullets per slide. The final content slide must be a summary with 2-3 review questions. Each visual field must describe a specific labeled medical illustration, histology image, anatomy image, or mechanism diagram that genuinely matches that slide.`;
+  const isHypersensitivity=/hypersensitivity/i.test(topic);
+  const pathologyOnly=isHypersensitivity && /patholog|morpholog|anatom/i.test(topic);
+  const hypersensitivityOutline = [
+   {title:"Scope: Hypersensitivity in Pathological Anatomy",bullets:["Hypersensitivity is an immune-mediated reaction that produces structural tissue injury; this lecture concentrates on the resulting lesions, not immunologic pathways.","Describe each example at two levels: gross (macroscopic organ appearance) and microscopic (cellular and tissue pattern).","There is no single gross appearance for each hypersensitivity type; morphology depends on the target organ and the associated disease.","The four types are used only as an organizing classification for the morphological examples."],visual:"Four-panel overview comparing gross organ specimens and microscopic tissue patterns for hypersensitivity types I–IV."},
+   {title:"Type I: Immediate Hypersensitivity — Bronchial Asthma",bullets:["Gross: lungs may be overinflated; bronchi can contain tenacious mucus plugs, especially in severe fatal asthma.","Microscopy: airway mucosa shows edema and eosinophil-rich inflammation; mucus plugs may contain Curschmann spirals and Charcot–Leyden crystals.","Chronic remodeling includes thickened basement membrane, enlarged bronchial smooth muscle and increased mucus glands.","Morphology to recognize: mucus plugging, eosinophils and airway-wall remodeling."],visual:"Gross pathology of hyperinflated lungs with mucus-plugged bronchi alongside an H&E bronchial section showing eosinophils, mucus plug and thickened basement membrane."},
+   {title:"Type I: Immediate Hypersensitivity — Anaphylaxis and Urticaria",bullets:["Gross: urticaria produces raised, transient wheals; severe anaphylaxis may cause marked laryngeal and mucosal edema.","Microscopy: dermal edema separates collagen bundles, with dilated small vessels and a variable perivascular inflammatory infiltrate.","Airway edema may narrow the laryngeal lumen; this is a potentially life-threatening gross anatomical change.","Do not confuse the visible wheal/edema with a specific microscopic granulomatous or necrotizing lesion."],visual:"Gross skin wheals and laryngeal edema with a histological skin section showing dermal edema and dilated vessels."},
+   {title:"Type II: Antibody-Mediated Injury — Goodpasture Syndrome",bullets:["Gross lungs: areas of pulmonary hemorrhage may appear heavy, wet and dark red-brown; recurrent bleeding can lead to hemosiderin-laden macrophages.","Gross kidneys may show no distinctive external lesion; severe disease can produce enlarged, pale kidneys, but this is not specific.","Microscopy: necrotizing crescentic glomerulonephritis with fibrinoid necrosis and crescents in severe cases.","Immunofluorescence shows a linear IgG pattern along glomerular and alveolar basement membranes; this is a diagnostic tissue pattern, not a gross feature."],visual:"Paired gross lung with pulmonary hemorrhage and kidney section, plus renal glomerulus with crescent formation and linear basement-membrane immunofluorescence."},
+   {title:"Type II: Antibody-Mediated Injury — Autoimmune Blistering Disease",bullets:["Pemphigus vulgaris: grossly flaccid, easily ruptured blisters and painful erosions of skin or oral mucosa.","Microscopy: suprabasal acantholysis creates an intraepidermal cleft; basal cells remain attached in a row-of-tombstones appearance.","Bullous pemphigoid: grossly tense blisters; microscopy shows a subepidermal split with eosinophils.","These contrasting cleavage levels are the key pathological-anatomical distinction."],visual:"Gross comparison of flaccid pemphigus and tense pemphigoid blisters with labeled histological intraepidermal versus subepidermal clefts."},
+   {title:"Type III: Immune-Complex Injury — Vasculitis",bullets:["Gross: affected medium or small arteries may show segmental wall thickening, thrombosis, hemorrhage or small aneurysmal dilatations; appearance varies by vessel and organ.","Microscopy: vessel walls show fibrinoid necrosis with neutrophilic inflammation and nuclear dust (leukocytoclasia).","Involved organs may develop ischemic infarcts or hemorrhages downstream from damaged vessels.","A classic example of immune-complex vascular injury is the Arthus reaction; do not label every vasculitis as type III without clinical-pathological context."],visual:"Gross arterial segment with focal aneurysmal dilatation and hemorrhage, paired with histology showing fibrinoid necrosis and neutrophilic vessel-wall inflammation."},
+   {title:"Type III: Immune-Complex Injury — Lupus Nephritis",bullets:["Gross: kidneys may be enlarged and pale in active diffuse disease, but gross appearance is variable and may be unremarkable.","Microscopy: proliferative lesions show endocapillary hypercellularity, leukocyte influx and, in severe cases, wire-loop capillary-wall thickening.","Immunofluorescence classically shows granular immune deposits; electron microscopy may show subendothelial and other electron-dense deposits.","The diagnostic emphasis is the glomerular pattern and immune deposits, not a unique gross kidney appearance."],visual:"Gross kidney cut section beside renal glomerulus with endocapillary proliferation and wire-loop capillary loops; separate granular immunofluorescence inset."},
+   {title:"Type IV: T-Cell-Mediated Injury — Tuberculosis",bullets:["Gross lung: caseating granulomas may appear as yellow-white, cheese-like areas; cavitation can develop in post-primary pulmonary disease.","Microscopy: central caseous necrosis is surrounded by epithelioid histiocytes, Langhans-type giant cells and a rim of lymphocytes.","Fibrosis and calcification may occur in healed lesions.","The granulomatous pattern is a delayed-type cell-mediated tissue reaction; identify the necrotic center and cellular rim."],visual:"Gross lung with yellow-white caseous focus and cut surface, alongside H&E granuloma with central caseation, epithelioid histiocytes, Langhans giant cell and lymphocytes."},
+   {title:"Type IV: T-Cell-Mediated Injury — Contact Dermatitis",bullets:["Gross skin: erythema, edema, papules and small vesicles occur at sites of contact; chronic lesions may become scaly and lichenified.","Microscopy: spongiosis (intercellular epidermal edema) is the hallmark; lymphocytes migrate into the epidermis (exocytosis).","A superficial perivascular lymphocytic infiltrate is present in the dermis; severe cases may form intraepidermal vesicles.","This is a useful contrast with antibody-mediated blistering, where the level of epidermal separation differs."],visual:"Gross eczematous contact dermatitis with erythema and vesicles, paired with skin histology showing spongiosis, lymphocyte exocytosis and intraepidermal vesicle."}
+  ];
+  const prompt=`Create a medically accurate MBBS teaching presentation in ${language} about this exact topic: "${topic}".${pathologyOnly ? " STRICT SCOPE: PATHOLOGICAL ANATOMY ONLY. Use the supplied pathology-focused outline verbatim as the content basis; do not replace it with immunology teaching. Gross/macro morphology and microscopic morphology are the central content on every disease slide. Explain the actual affected organ, its cut-surface/visible appearance, and the tissue-level lesion. Mention immune mechanism only in one short orienting phrase where essential. Do not invent gross changes where none are characteristic; explicitly say when gross appearance is variable or nonspecific. Do not describe normal gross anatomy as a substitute for pathological morphology." : ""} STRICT TOPIC FIDELITY: every slide title, bullet, example, clinical condition, and visual must directly teach this topic. Do not drift into neighboring subjects or add unrelated diseases, case reports, or generic medical facts. Use a coherent textbook-style sequence. Use precise standard medical terminology and explain morphology rather than vague statements. If a detail is uncertain, omit it instead of guessing. Do not create research claims or citations from article titles. Do not invent numerical values, guidelines, references, or facts. Return only JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Create exactly ${count-1} content slides (the cover is an additional first slide, making ${count} slides total), with 3-5 concise, topic-specific bullets per slide. The final content slide must be a summary with 2-3 review questions. Each visual field must describe a specific labeled medical illustration, gross specimen, histology image, or morphology comparison that genuinely matches that slide.${pathologyOnly ? " Use these exact nine slide topics and facts as the source outline; preserve all gross and microscopic findings and do not substitute a generic mechanism diagram: "+JSON.stringify(hypersensitivityOutline) : ""}`;
   const system = "Create medically accurate MBBS slides. Return exactly one valid JSON object. Use double quotes for every key and string. No markdown fences, comments, or trailing commas. Required shape: {\"title\":\"...\",\"subtitle\":\"...\",\"slides\":[{\"title\":\"...\",\"bullets\":[\"...\"],\"visual\":\"...\"}]}";
   let result = await generateWithFallback([{role:"user",content:prompt}], system, provider, 5000);
   const parseOutline = (answer: string): {title?:string;subtitle?:string;slides?:Slide[]} => {
@@ -248,7 +317,7 @@ export async function POST(req:NextRequest){
    s.background={color:"FFFFFF"};
    s.addShape("rect",{x:0,y:0,w:13.333,h:.16,line:{color:navy},fill:{color:navy}});
    s.addText(clean(item.title,"Section "+(i+1)),{x:.65,y:.55,w:11.9,h:.72,fontFace:"Arial",fontSize:25,bold:true,color:navy,fit:"shrink"});
-   const bullets=Array.isArray(item.bullets)?item.bullets.slice(0,3):[];
+   const bullets=Array.isArray(item.bullets)?item.bullets.slice(0,4):[];
    // Use literal bullet characters rather than PowerPoint bullet metadata.
    // This avoids first-character clipping in some PPTX-to-PDF converters.
    const text=bullets.map((b:string)=>"•  "+clean(b)).join("\n");
