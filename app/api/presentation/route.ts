@@ -26,7 +26,7 @@ function addAutoDiagram(s:PptxGenJS.Slide,item:Slide,topic:string,navy:string){
    s.addShape("roundRect",{x:7.25,y,w:4.75,h:.65,line:{color:"C9D9E7",width:1},fill:{color:i%2?"F5F8FB":"EAF2F8"}});
    s.addShape("ellipse",{x:7.48,y:y+.18,w:.28,h:.28,line:{color:"477EAA"},fill:{color:"477EAA"}});
    s.addText(String(i+1),{x:7.48,y:y+.23,w:.28,h:.14,fontFace:"Arial",fontSize:8,bold:true,color:"FFFFFF",align:"center",margin:0});
-   s.addText(label,{x:7.95,y:y+.17,w:3.8,h:.28,fontFace:"Arial",fontSize:11,bold:true,color:navy,fit:"shrink",valign:"mid",margin:0});
+   s.addText(label,{x:7.95,y:y+.17,w:3.8,h:.28,fontFace:"Arial",fontSize:11,bold:true,color:navy,fit:"shrink",valign:"middle",margin:0});
    if(i<3)s.addShape("line",{x:9.6,y:y+.65,w:0,h:.27,line:{color:"477EAA",width:1.5,endArrowType:"triangle"}});
   });
   s.addText("VASCULAR RESPONSE  →  CELLULAR RESPONSE  →  OUTCOME",{x:7.25,y:6.0,w:4.75,h:.35,fontFace:"Arial",fontSize:9,bold:true,color:"2E6F9E",fit:"shrink",align:"center"});
