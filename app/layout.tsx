@@ -1,4 +1,5 @@
 import "./globals.css";
+import "./background-overrides.css";
 import { Inter } from "next/font/google";
 import Link from "next/link";
 
