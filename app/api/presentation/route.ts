@@ -12,6 +12,31 @@ function addAutoDiagram(s:PptxGenJS.Slide,item:Slide,topic:string,navy:string){
  const title=clean(item.title);
  const bullets=(Array.isArray(item.bullets)?item.bullets:[]).slice(0,4).map(x=>clean(x).slice(0,100)).filter(Boolean);
  const combined=(topic+" "+title+" "+bullets.join(" ")).toLowerCase();
+ const foodborne=/foodborne intoxication|food poisoning|staphylococcus aureus.*clostridium botulinum|clostridium botulinum.*staphylococcus aureus/.test(combined);
+ if(foodborne){
+  const t=title.toLowerCase();
+  let labels=["Contaminated food","Preformed toxin ingested","Target tissue affected","Clinical outcome"];
+  if(/morphology and reservoir/.test(t))labels=["Gram-positive cocci","Grape-like clusters","Skin / nasal carriage","Food contamination"];
+  else if(/enterotoxins/.test(t))labels=["S. aureus grows in food","Enterotoxin is produced","Heat-stable toxin persists","Superantigen activity → cytokines"];
+  else if(/pathogenesis and onset/.test(t))labels=["Preformed enterotoxin eaten","Rapid onset: 0.5–8 hours","Vomiting + abdominal cramps","Usually resolves in 24–48 hours"];
+  else if(/diagnosis and prevention/.test(t))labels=["Hand hygiene + safe handling","Refrigerate ≤4°C","Hot-hold ≥60°C","Discard toxin-contaminated food"];
+  else if(/spore biology/.test(t))labels=["Gram-positive anaerobic rod","Oval endospore","Spore survives ordinary cooking","Anaerobic low-acid food → toxin"];
+  else if(/molecular target/.test(t))labels=["Toxin enters nerve terminal","Light chain cleaves SNARE","Vesicle fusion is blocked","Acetylcholine release stops"];
+  else if(/clinical pattern/.test(t))labels=["Cranial nerve palsies","Bulbar weakness","Descending flaccid paralysis","Respiratory muscle failure risk"];
+  else if(/diagnosis, treatment/.test(t))labels=["Recognize clinical syndrome","Give antitoxin promptly","Monitor / support ventilation","Pressure-can low-acid foods"];
+  else if(/two distinct/.test(t))labels=["S. aureus: preformed enterotoxin","Rapid GI illness / vomiting","C. botulinum: neurotoxin","Descending flaccid paralysis"];
+  s.addText("TOPIC-SPECIFIC MEDICAL SCHEMATIC",{x:7.15,y:1.55,w:5.45,h:.3,fontFace:"Arial",fontSize:10,bold:true,color:"477EAA",charSpacing:1.1,fit:"shrink"});
+  labels.forEach((label,i)=>{
+   const y=2.05+i*.94;
+   s.addShape("roundRect",{x:7.25,y,w:4.75,h:.65,line:{color:"C9D9E7",width:1},fill:{color:i%2?"F5F8FB":"EAF2F8"}});
+   s.addShape("ellipse",{x:7.48,y:y+.18,w:.28,h:.28,line:{color:"477EAA"},fill:{color:"477EAA"}});
+   s.addText(String(i+1),{x:7.48,y:y+.23,w:.28,h:.14,fontFace:"Arial",fontSize:8,bold:true,color:"FFFFFF",align:"center",margin:0});
+   s.addText(label,{x:7.95,y:y+.13,w:3.8,h:.38,fontFace:"Arial",fontSize:10,bold:true,color:navy,fit:"shrink",valign:"middle",margin:0});
+   if(i<3)s.addShape("line",{x:9.6,y:y+.65,w:0,h:.27,line:{color:"477EAA",width:1.5,endArrowType:"triangle"}});
+  });
+  s.addText("SCHEMATIC FOR TEACHING · NOT A CLINICAL SPECIMEN",{x:7.3,y:5.95,w:5.25,h:.35,fontFace:"Arial",fontSize:8,color:"60788D",italic:true,align:"center",fit:"shrink"});
+  return;
+ }
  const hypersensitivity=/hypersensitivity/.test(combined);
  const inflammation=/acute inflammation|inflamm/.test(combined);
  const cardiac=/cardiac cycle|heart cycle|ventricular systole|atrial systole/i.test(combined);
@@ -312,6 +337,9 @@ export async function POST(req:NextRequest){
   const slides=(outline.slides??[]).slice(0,count-1);
   // Retrieve topic-matched, openly licensed Commons visuals. Uploaded images are prioritized and distributed across slides.
   const visualAssets:(MedicalVisual|null)[]=await Promise.all(slides.map(async(item,index)=>{
+   // For the verified foodborne-intoxication deck, use editable topic-specific schematics
+   // rather than unverified search hits (which previously returned infant/wound botulism photos).
+   if(isFoodborneIntoxication)return null;
    if(sources.includes("upload")&&images[index%Math.max(images.length,1)]){
     const im=images[index%images.length];
     return {data:im.data,mime:im.type,title:im.name,page:"User-provided image",license:"User supplied",artist:"User supplied",animated:false};
