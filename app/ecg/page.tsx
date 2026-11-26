@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import EcgLab from "./EcgLab";
+import "./ecg.css";
 
 export const metadata: Metadata = {
   title: "Dynamic ECG Learning Lab | MD Faizan",
