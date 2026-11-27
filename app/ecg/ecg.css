@@ -113,3 +113,38 @@
 .ecg-page .ecg-checklist li span{font-family:'Patrick Hand','Comic Sans MS',cursive !important;color:#a34c51 !important}
 .ecg-page .ecg-note{background-color:#fff9df !important;border-left:3px solid #c58d43 !important;color:#65583f !important;padding:13px 15px 13px 29px !important}
 .ecg-page .ecg-placement-note{display:block;padding:13px 15px 13px 29px;line-height:1.9}
+
+/* Anatomical model: separate the model, stage explanation and legend into stable rows. */
+.ecg-live-lab{grid-template-columns:minmax(0,1.15fr) minmax(280px,.85fr);gap:22px;align-items:stretch}
+.ecg-heart-stage{min-width:0;padding:52px 18px 22px}
+.ecg-anatomical-model{height:auto;min-height:0;display:grid;grid-template-columns:minmax(0,1fr);gap:14px;overflow:visible}
+.ecg-model-visual{position:relative;width:100%;height:390px;min-width:0;overflow:hidden;border:1px solid rgba(151,190,218,.22);border-radius:12px;background:radial-gradient(ellipse at 50% 45%,rgba(62,112,151,.3),transparent 68%)}
+.ecg-anatomical-viewer{position:absolute;inset:8px 4% 8px;width:92%;height:auto;z-index:1}
+.ecg-anatomical-viewer model-viewer{width:100%;height:100%;display:block;background:transparent;--poster-color:transparent;pointer-events:none}
+.ecg-heartbeat{width:100%;height:100%;animation:ecg-heartbeat 1s ease-in-out infinite;transform-origin:50% 55%}
+@keyframes ecg-heartbeat{0%,100%{transform:scale(1)}12%{transform:scale(1.035)}22%{transform:scale(1)}34%{transform:scale(1.018)}48%{transform:scale(1)}}
+.ecg-impulse-overlay{position:absolute;inset:7% 9% 8%;width:82%;height:85%;z-index:3;overflow:visible;pointer-events:none}
+.ecg-impulse-route{fill:none;stroke:rgba(255,230,130,.48);stroke-width:1.6;stroke-linecap:round;stroke-dasharray:2 2}
+.ecg-impulse-active{fill:none;stroke:#ffe36e;stroke-width:2.4;stroke-linecap:round;stroke-dasharray:3 2;filter:drop-shadow(0 0 3px #ffd45a);animation:ecg-route-dash .65s linear infinite}
+.ecg-impulse-nodes circle{fill:#fff4b4;stroke:#ffb83d;stroke-width:.7;filter:drop-shadow(0 0 3px #ffd45a)}
+.ecg-impulse-particle{fill:#fff;stroke:#ffd45a;stroke-width:1.2;filter:drop-shadow(0 0 5px #ffcf52)}
+.ecg-impulse-labels{font:bold 4px Arial,sans-serif;fill:#fff6c9;paint-order:stroke;stroke:#172f48;stroke-width:1.1px;stroke-linejoin:round}
+.ecg-model-badge{z-index:4;top:10px;left:12px;right:12px;text-align:center;font-size:8px;white-space:normal}
+.ecg-model-stage-card{position:relative;inset:auto;width:auto;max-width:none;z-index:1;padding:14px 16px}
+.ecg-model-stage-card span{font-size:8px}
+.ecg-model-stage-card strong{font-size:15px}
+.ecg-model-stage-card p{font-size:12px;line-height:1.6}
+.ecg-anatomical-model .ecg-heart-3d-legend{position:relative;inset:auto;display:flex;flex-wrap:wrap;gap:8px 14px;padding:4px 2px;z-index:1}
+.ecg-heart-stage .ecg-model-tag{top:18px;left:18px;right:18px;z-index:5;white-space:normal}
+@media(max-width:760px){
+ .ecg-live-lab{grid-template-columns:minmax(0,1fr);gap:14px}
+ .ecg-heart-stage{padding:48px 12px 16px;min-height:0}
+ .ecg-model-visual{height:330px}
+ .ecg-anatomical-viewer{inset:16px 3% 12px;width:94%}
+ .ecg-impulse-overlay{inset:9% 8% 9%;width:84%;height:82%}
+ .ecg-model-stage-card{position:relative;top:auto;right:auto;width:auto}
+ .ecg-anatomical-model .ecg-heart-3d-legend{position:relative;bottom:auto}
+ .ecg-stage-panel{padding:20px}
+ .ecg-section-heading.light{grid-template-columns:1fr;gap:10px}
+}
+@media(prefers-reduced-motion:reduce){.ecg-heartbeat,.ecg-impulse-active{animation:none}}
