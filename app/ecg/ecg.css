@@ -28,3 +28,15 @@
 .ecg-axis-lab{margin-top:18px;padding:25px;display:grid;grid-template-columns:1fr 1fr;gap:20px;align-items:center}.ecg-axis-lab h3{font-size:24px;letter-spacing:-.04em;margin:0;color:#fff}.ecg-axis-slider{display:block;margin-top:22px;color:#dceaf5;font-size:11px}.ecg-axis-slider strong{float:right;color:#ffcf82;font-size:16px}.ecg-axis-slider input{width:100%;accent-color:#ffca73;margin:16px 0 7px}.ecg-axis-slider>span{display:flex;justify-content:space-between;color:#8fa9bf}.ecg-axis-status{display:inline-block;margin-top:15px;padding:8px 10px;border-radius:6px;background:#193653;color:#b9d8ed;font-size:10px}.ecg-axis-visual-wrap{display:flex;justify-content:center}.ecg-axis-svg{width:min(100%,360px);height:auto}
 @media(max-width:760px){.ecg-live-lab,.ecg-axis-lab{grid-template-columns:1fr}.ecg-heart-stage{min-height:320px}.ecg-stage-panel{padding:22px}.ecg-axis-lab{padding:20px}.ecg-heart-svg{max-height:330px}}
 @media(prefers-reduced-motion:reduce){.ecg-impulse,.ecg-conduction-path{animation:none}}
+
+/* Rotatable 3D heart teaching canvas */
+.ecg-heart-3d-wrap{width:100%;height:380px;position:relative;display:flex;align-items:center;justify-content:center;touch-action:pan-y}
+.ecg-heart-3d{width:100%;height:100%;display:block;cursor:grab;touch-action:pan-y}
+.ecg-heart-3d:active{cursor:grabbing}
+.ecg-heart-3d-hint{position:absolute;top:18px;right:18px;color:#a8c7df;font-size:8px;font-weight:850;letter-spacing:.12em;pointer-events:none}
+.ecg-heart-3d-legend{position:absolute;bottom:15px;left:16px;display:flex;gap:12px;flex-wrap:wrap;pointer-events:none}
+.ecg-heart-3d-legend span{display:flex;align-items:center;gap:5px;color:#c5d8e8;font-size:8px}
+.ecg-heart-3d-legend i{display:inline-block;width:7px;height:7px;border-radius:50%}
+.ecg-heart-3d-legend i.blue{background:#65c6ef}.ecg-heart-3d-legend i.red{background:#f07878}.ecg-heart-3d-legend i.gold{background:#ffe78a}
+.ecg-stage-marker{fill:#ffe78a;stroke:#fff;stroke-width:2;filter:drop-shadow(0 0 7px #ffcf82);transition:cx .35s ease,cy .35s ease}
+@media(max-width:760px){.ecg-heart-3d-wrap{height:310px}}
