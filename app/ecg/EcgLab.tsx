@@ -14,7 +14,8 @@ function Waveform({ paused, stage = 0 }: { paused: boolean; stage?: number }) {
       <path className="ecg-trace-shadow" d="M0 125 L90 125 Q110 125 120 111 Q132 95 145 125 L210 125 L235 130 L250 125 L270 125 L284 145 L300 24 L317 166 L334 125 L390 125 Q420 125 438 96 Q466 62 492 125 L620 125 Q700 125 730 125 L900 125" />
       <path className="ecg-trace" pathLength="1000" d="M0 125 L90 125 Q110 125 120 111 Q132 95 145 125 L210 125 L235 130 L250 125 L270 125 L284 145 L300 24 L317 166 L334 125 L390 125 Q420 125 438 96 Q466 62 492 125 L620 125 Q700 125 730 125 L900 125" />
       <g className="ecg-labels"><text x="125" y="82">P</text><text x="300" y="18">QRS</text><text x="465" y="51">T</text></g>
-      <g className="ecg-guides"><path d="M132 88 V104 M300 22 V36 M466 55 V75" /></g>\n      <circle className="ecg-stage-marker" cx={[120,145,250,300,466][stage]} cy={[111,125,125,24,96][stage]} r="8" />
+      <g className="ecg-guides"><path d="M132 88 V104 M300 22 V36 M466 55 V75" /></g>
+      <circle className="ecg-stage-marker" cx={[120,145,250,300,466][stage]} cy={[111,125,125,24,96][stage]} r="8" />
     </svg>
     <div className="ecg-paper-caption"><span>Illustrative normal sinus beat</span><span>25 mm/s · 10 mm/mV</span></div>
   </div>;
@@ -136,7 +137,7 @@ function Heart3DVisual({ stage }: { stage: number }) {
       for(const path of paths){ctx.beginPath();path.forEach((p,i)=>{const q=project({x:p[0],y:p[1],z:p[2]});if(i===0)ctx.moveTo(q.x,q.y);else ctx.lineTo(q.x,q.y);});ctx.strokeStyle="#ffe78a";ctx.lineWidth=4*dpr;ctx.setLineDash([6*dpr,5*dpr]);ctx.stroke();}
       ctx.setLineDash([]);
       const dots=[[-.25,.35,.37],[-.12,.23,.4],[.02,.06,.41],[.18,-.23,.39],[.28,-.46,.35]];
-      const p=project(dots[Math.min(stage,4)].reduce((o,v,i)=>{o[["x","y","z"][i]]=v;return o;},{}));
+      const activeDot=dots[Math.min(stage,4)];const p=project({x:activeDot[0],y:activeDot[1],z:activeDot[2]});
       ctx.beginPath();ctx.arc(p.x,p.y,7*dpr,0,Math.PI*2);ctx.fillStyle="#fff0a6";ctx.shadowColor="#ffe78a";ctx.shadowBlur=18*dpr;ctx.fill();ctx.shadowBlur=0;
       raf=requestAnimationFrame(draw);
     };
