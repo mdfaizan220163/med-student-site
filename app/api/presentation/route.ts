@@ -295,7 +295,7 @@ export async function POST(req:NextRequest){
           {type:"text",text:prompt + (yandexLibrary.documents.length
             ? "\\n\\nUse the attached Yandex Disk medical PDFs as primary source material for the slide content. Preserve their medical terminology and explanations. Do not add book/page numbers."
             : "\\n\\nNo Yandex PDF was retrieved for this presentation. Do not claim the slides are based on Yandex documents.")},
-          ...yandexLibrary.documents.slice(0,3).map(doc=>({type:"document" as const,name:doc.name,mime:"application/pdf" as const,data:doc.data}))
+          ...yandexLibrary.documents.slice(0,3).map(doc=>({type:"file_pdf" as const,name:doc.name,data:doc.data}))
         ]
       }], system, provider, 5000);
   const parseOutline = (answer: string): {title?:string;subtitle?:string;slides?:Slide[]} => {
