@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useRef, useState } from "react";
+import Script from "next/script";
 
 const questions = [
   { q: "Which ECG wave represents atrial depolarization?", options: ["P wave", "QRS complex", "T wave"], answer: 0, explain: "The P wave represents electrical activation (depolarization) of the atria." },
@@ -72,7 +73,8 @@ function AxisVisual({ angle }: { angle: number }) {
 
 
 function Heart3DVisual({ stage }: { stage: number }) {
-  const hostRef = useRef<HTMLDivElement>(null);
+  const [viewerReady, setViewerReady] = useState(false);
+  const [viewerFailed, setViewerFailed] = useState(false);
   const stages = [
     { name: "SA node", note: "Impulse initiation in the sinoatrial node." },
     { name: "Atrial myocardium", note: "Depolarization spreads across both atria toward the AV node." },
@@ -80,49 +82,31 @@ function Heart3DVisual({ stage }: { stage: number }) {
     { name: "His–Purkinje system", note: "Rapid conduction through the His bundle, bundle branches and Purkinje fibres." },
     { name: "Ventricular myocardium", note: "Ventricular repolarization follows the depolarization sequence." },
   ];
-  useEffect(() => {
-    const host = hostRef.current;
-    if (!host) return;
-    let cancelled = false;
-    const mount = () => {
-      if (cancelled || !host) return;
-      let viewer = host.querySelector("model-viewer") as HTMLElement | null;
-      if (!viewer) {
-        viewer = document.createElement("model-viewer");
-        viewer.setAttribute("src", "/models/anatomical-human-heart.glb");
-        viewer.setAttribute("alt", "Three-dimensional anatomical human heart model");
-        viewer.setAttribute("camera-controls", "");
-        viewer.setAttribute("touch-action", "pan-y");
-        viewer.setAttribute("auto-rotate", "");
-        viewer.setAttribute("rotation-per-second", "12deg");
-        viewer.setAttribute("shadow-intensity", "1");
-        viewer.setAttribute("exposure", "1.05");
-        viewer.setAttribute("camera-orbit", "0deg 75deg 2.6m");
-        viewer.setAttribute("interaction-prompt", "auto");
-        viewer.setAttribute("ar", "");
-        host.appendChild(viewer);
-      }
-    };
-    if (customElements.get("model-viewer")) mount();
-    else {
-      let script = document.querySelector<HTMLScriptElement>('script[data-ecg-model-viewer="true"]');
-      if (!script) {
-        script = document.createElement("script");
-        script.type = "module";
-        script.src = "https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js";
-        script.dataset.ecgModelViewer = "true";
-        document.head.appendChild(script);
-      }
-      script.addEventListener("load", mount, { once: true });
-      const poll = window.setInterval(() => {
-        if (customElements.get("model-viewer")) { window.clearInterval(poll); mount(); }
-      }, 150);
-      return () => { cancelled = true; window.clearInterval(poll); script?.removeEventListener("load", mount); };
-    }
-    return () => { cancelled = true; };
-  }, []);
+  const ModelViewer = "model-viewer" as any;
   return <div className="ecg-anatomical-model">
-    <div className="ecg-anatomical-viewer" ref={hostRef} />
+    <Script
+      src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js"
+      type="module"
+      strategy="afterInteractive"
+      onReady={() => setViewerReady(true)}
+      onError={() => setViewerFailed(true)}
+    />
+    <div className="ecg-anatomical-viewer">
+      {viewerReady ? <ModelViewer
+        src="/models/anatomical-human-heart.glb"
+        alt="Three-dimensional anatomical human heart model"
+        camera-controls
+        auto-rotate
+        rotation-per-second="12deg"
+        shadow-intensity="1"
+        exposure="1.15"
+        camera-orbit="0deg 75deg 2.6m"
+        interaction-prompt="auto"
+        reveal="auto"
+      /> : <div className="ecg-model-loading" role="status">
+        {viewerFailed ? "3D viewer could not load. Check your internet connection and reload this page." : "Loading anatomical 3D heart…"}
+      </div>}
+    </div>
     <div className="ecg-model-badge">REAL ANATOMICAL GLB · DRAG TO ROTATE · SCROLL TO ZOOM</div>
     <div className="ecg-model-stage-card">
       <span>LIVE CONDUCTION STEP {stage + 1} / 5</span>
