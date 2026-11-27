@@ -390,7 +390,7 @@ export async function POST(req:NextRequest){
     const y=1.88+bi*rowH;
     s.addShape("ellipse",{x:.92,y:y+.04,w:.3,h:.3,line:{color:accent},fill:{color:accent}});
     s.addText(String(bi+1),{x:.92,y:y+.105,w:.3,h:.12,fontFace:"Aptos",fontSize:8,bold:true,color:"FFFFFF",align:"center",margin:0});
-    s.addText(clean(bullet),{x:1.38,y,w:4.92,h:Math.max(.58,rowH-.12),fontFace:"Aptos",fontSize:13,color:ink,breakLine:false,fit:"shrink",margin:.02,valign:"mid",lineSpacingMultiple:1.05});
+    s.addText(clean(bullet),{x:1.38,y,w:4.92,h:Math.max(.58,rowH-.12),fontFace:"Aptos",fontSize:13,color:ink,breakLine:false,fit:"shrink",margin:.02,valign:"middle",lineSpacingMultiple:1.05});
    });
    const visual=visualAssets[i];
    if(visual){
