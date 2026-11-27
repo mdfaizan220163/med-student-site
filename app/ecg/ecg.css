@@ -92,3 +92,11 @@
  .ecg-model-stage-card{width:auto;top:auto;right:auto}
  .ecg-model-tools button{font-size:11px;padding:9px 10px}
 }
+
+/* Automatic QRS-axis tour controls and pause-point explanation */
+.ecg-axis-stop-info{margin-top:13px;padding:13px 15px;border-left:3px solid #ffcf82;background:#173653;border-radius:0 7px 7px 0}
+.ecg-axis-stop-info strong{display:block;color:#ffdc9e;font-size:12px;margin-bottom:5px}
+.ecg-axis-stop-info p{margin:0;color:#c4d5e3;font-size:11px;line-height:1.75}
+.ecg-axis-play-toggle{margin-top:13px;border:1px solid #7895ad;background:#eaf4fb;color:#163653;border-radius:6px;padding:10px 15px;font-size:11px;font-weight:850;cursor:pointer}
+.ecg-axis-play-toggle:hover{background:#fff}
+.ecg-axis-play-toggle:focus-visible{outline:2px solid #ffcf82;outline-offset:3px}
