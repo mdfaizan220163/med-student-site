@@ -377,22 +377,44 @@ export async function POST(req:NextRequest){
   for(let i=0;i<slides.length;i++){
    const item=slides[i];
    const s=pptx.addSlide();
-   s.background={color:"FFFFFF"};
-   s.addShape("rect",{x:0,y:0,w:13.333,h:.16,line:{color:navy},fill:{color:navy}});
-   s.addText(clean(item.title,"Section "+(i+1)),{x:.65,y:.55,w:11.9,h:.72,fontFace:"Arial",fontSize:25,bold:true,color:navy,fit:"shrink"});
+   s.background={color:palette.paper};
+   s.addShape("rect",{x:0,y:0,w:13.333,h:.16,line:{color:accent},fill:{color:accent}});
+   s.addText(String(i+1).padStart(2,"0"),{x:.68,y:.5,w:.55,h:.3,fontFace:"Aptos",fontSize:10,bold:true,color:accent,margin:0});
+   s.addText(clean(item.title,"Section "+(i+1)),{x:1.35,y:.43,w:11.2,h:.72,fontFace:"Aptos Display",fontSize:25,bold:true,color:navy,fit:"shrink",margin:0});
+   s.addShape("line",{x:.7,y:1.32,w:11.95,h:0,line:{color:"DCE5EC",width:1}});
+   s.addShape("roundRect",{x:.65,y:1.58,w:5.95,h:4.95,rectRadius:.08,line:{color:"E2E9EF",width:.8},fill:{color:"FFFFFF"}});
+   s.addShape("roundRect",{x:6.82,y:1.58,w:5.85,h:4.95,rectRadius:.08,line:{color:"E2E9EF",width:.8},fill:{color:pale}});
    const bullets=Array.isArray(item.bullets)?item.bullets.slice(0,4):[];
-   // Use literal bullet characters rather than PowerPoint bullet metadata.
-   // This avoids first-character clipping in some PPTX-to-PDF converters.
-   const text=bullets.map((b:string)=>"•  "+clean(b)).join("\n");
-   if(text)s.addText(text,{x:.75,y:1.72,w:5.8,h:4.85,fontFace:"Arial",fontSize:15,color:"263849",breakLine:false,paraSpaceAfter:12,fit:"shrink",margin:.12,valign:"top",lineSpacingMultiple:1.05});
+   const rowH=4.35/Math.max(1,bullets.length);
+   bullets.forEach((bullet:string,bi:number)=>{
+    const y=1.88+bi*rowH;
+    s.addShape("ellipse",{x:.92,y:y+.04,w:.3,h:.3,line:{color:accent},fill:{color:accent}});
+    s.addText(String(bi+1),{x:.92,y:y+.105,w:.3,h:.12,fontFace:"Aptos",fontSize:8,bold:true,color:"FFFFFF",align:"center",margin:0});
+    s.addText(clean(bullet),{x:1.38,y,w:4.92,h:Math.max(.58,rowH-.12),fontFace:"Aptos",fontSize:13,color:ink,breakLine:false,fit:"shrink",margin:.02,valign:"mid",lineSpacingMultiple:1.05});
+   });
    const visual=visualAssets[i];
    if(visual){
-    s.addImage({data:`data:${visual.mime};base64,${visual.data}`,x:7.05,y:1.8,w:5.55,h:4.55, sizing:{type:"contain",w:5.55,h:4.55}});
-    s.addText("VISUAL · "+visual.title.slice(0,90),{x:7.1,y:6.42,w:5.4,h:.24,fontFace:"Arial",fontSize:7,color:"60788D",fit:"shrink",margin:0});
+    s.addImage({data:`data:${visual.mime};base64,${visual.data}`,x:7.05,y:1.82,w:5.35,h:4.45, sizing:{type:"contain",w:5.35,h:4.45}});
+    s.addText("IMAGE SOURCE · "+visual.title.slice(0,76),{x:7.1,y:6.32,w:5.25,h:.2,fontFace:"Aptos",fontSize:7,color:palette.muted,fit:"shrink",margin:0});
    }else addAutoDiagram(s,item,topic,navy);
-   if(item.visual)s.addText(clean(item.visual),{x:.9,y:6.55,w:5.8,h:.3,fontFace:"Arial",fontSize:9,color:"2E6F9E",italic:true,fit:"shrink"});
-   s.addText((i+1)+" / "+slides.length,{x:.65,y:7.12,w:.6,h:.18,fontFace:"Arial",fontSize:8,color:"8BA2B7",margin:0});
+   if(item.visual)s.addText(clean(item.visual),{x:.85,y:6.65,w:8.7,h:.22,fontFace:"Aptos",fontSize:8,color:accent,italic:true,fit:"shrink",margin:0});
+   s.addText((i+1)+" / "+slides.length,{x:.68,y:7.12,w:.6,h:.18,fontFace:"Aptos",fontSize:8,color:palette.muted,margin:0});
    mark(s);
+  }
+
+  if(studyLibrary.files.length){
+   const sourceSlide=pptx.addSlide();
+   sourceSlide.background={color:palette.paper};
+   sourceSlide.addShape("rect",{x:0,y:0,w:13.333,h:.16,line:{color:accent},fill:{color:accent}});
+   sourceSlide.addText("Study sources & further reading",{x:.75,y:.7,w:11.8,h:.7,fontFace:"Aptos Display",fontSize:26,bold:true,color:navy,fit:"shrink"});
+   sourceSlide.addText("Primary material supplied from your Yandex Disk study library",{x:.78,y:1.45,w:11.6,h:.35,fontFace:"Aptos",fontSize:12,color:palette.muted});
+   studyLibrary.files.slice(0,14).forEach((name,index)=>{
+    const col=index%2,row=Math.floor(index/2),x=.85+col*6.05,y=2.05+row*.58;
+    sourceSlide.addShape("roundRect",{x,y,w:5.55,h:.42,line:{color:"E2E9EF",width:.7},fill:{color:"FFFFFF"}});
+    sourceSlide.addText((index+1)+".  "+name,{x:x+.18,y:y+.1,w:5.2,h:.2,fontFace:"Aptos",fontSize:9,color:ink,fit:"shrink",margin:0});
+   });
+   sourceSlide.addText("Source documents were used to ground slide content. Verify local course requirements and specimen labels before examination use.",{x:.85,y:6.55,w:10.8,h:.3,fontFace:"Aptos",fontSize:8,italic:true,color:palette.muted,fit:"shrink"});
+   mark(sourceSlide);
   }
 
   // Keep any additional uploaded images in a clearly labeled gallery slide.
