@@ -90,24 +90,24 @@ function Heart3DVisual({ stage }: { stage: number }) {
     resize();
     const observer = new ResizeObserver(resize);
     observer.observe(canvas);
-    const contour = [];
+    const contour: Array<{x:number;y:number}> = [];
     for (let i=0;i<100;i++) {
       const t = Math.PI*2*i/100;
       const x = 16*Math.pow(Math.sin(t),3);
       const y = 13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t);
       contour.push({x:x/17,y:y/17});
     }
-    const vertices = [];
+    const vertices: Array<{x:number;y:number;z:number}> = [];
     const depth = [-0.34,-0.28,-0.20,0,0.20,0.28,0.34];
     for (let z of depth) for (let p of contour) vertices.push({x:p.x*(1+0.10*Math.cos(z*4)),y:p.y,z});
-    const triangles = [];
+    const triangles: Array<[number,number,number]> = [];
     const n=contour.length;
     for(let k=0;k<depth.length-1;k++) for(let i=0;i<n;i++){
       const a=k*n+i,b=k*n+(i+1)%n,c=(k+1)*n+i,d=(k+1)*n+(i+1)%n;
       triangles.push([a,b,c],[b,d,c]);
     }
     for(let i=1;i<n-1;i++){triangles.push([0,i,i+1]);const q=(depth.length-1)*n;triangles.push([q,q+i+1,q+i]);}
-    const rotate=(p,rx,ry)=>{
+    const rotate=(p:{x:number;y:number;z:number},rx:number,ry:number)=>{
       const cy=Math.cos(ry),sy=Math.sin(ry),cx=Math.cos(rx),sx=Math.sin(rx);
       const x=p.x*cy-p.z*sy,z=p.x*sy+p.z*cy;
       return {x,y:p.y*cx-z*sx,z:p.y*sx+z*cx};
