@@ -23,6 +23,16 @@ function Waveform({ paused, stage = 0 }: { paused: boolean; stage?: number }) {
 }
 
 
+const axisStops = [
+  { angle: 0, title: "Horizontal reference", info: "At 0°, the mean QRS vector points toward lead I. Check lead I and aVF together when assessing the frontal QRS axis." },
+  { angle: 60, title: "Normal axis example", info: "Around +60° is a common normal adult QRS axis. The exact normal range depends on the reference used." },
+  { angle: 90, title: "Vertical axis example", info: "At +90°, the vector points inferiorly toward aVF. This may be a normal variant, depending on the patient and clinical context." },
+  { angle: 120, title: "Right axis deviation example", info: "A positive axis beyond about +90° is commonly described as right axis deviation in adults. Interpret it with the ECG and clinical context." },
+  { angle: 180, title: "Extreme axis example", info: "At ±180°, the vector points leftward. An axis in the −90° to ±180° quadrant is often called an extreme or northwest axis." },
+  { angle: -90, title: "Left axis deviation boundary", info: "At −90° is the boundary commonly used for left axis deviation. Values from about −30° to −90° are often classified as left axis deviation." },
+  { angle: -30, title: "Leftward normal boundary", info: "Around −30° is near the lower boundary of the commonly used normal adult axis range. Reference ranges can vary." },
+];
+
 const conductionStages = [
   { title: "SA node fires", wave: "P wave begins", detail: "The impulse starts in the sinoatrial node and spreads through both atria.", region: "SA node" },
   { title: "Atrial depolarization", wave: "P wave", detail: "Atrial myocardium depolarizes as the impulse travels toward the AV node.", region: "Atria" },
@@ -110,10 +120,12 @@ export default function EcgLab() {
   const [answer, setAnswer] = useState<number | null>(null);
   const [question, setQuestion] = useState(0);
   const [conductionStep, setConductionStep] = useState(0);
-  const [axisAngle, setAxisAngle] = useState(60);
+  const [axisIndex, setAxisIndex] = useState(1);
+  const [axisPlaying, setAxisPlaying] = useState(true);
+  const axisAngle = axisStops[axisIndex].angle;
   const [simulationRunning, setSimulationRunning] = useState(true);
   useEffect(() => { if (!simulationRunning) return; const timer = window.setInterval(() => setConductionStep(step => (step + 1) % conductionStages.length), 1800); return () => window.clearInterval(timer); }, [simulationRunning]);
-  useEffect(() => { const timer = window.setInterval(() => setAxisAngle(angle => angle >= 180 ? -180 : angle + 5), 110); return () => window.clearInterval(timer); }, []);
+  useEffect(() => { if (!axisPlaying) return; const timer = window.setInterval(() => setAxisIndex(index => (index + 1) % axisStops.length), 2800); return () => window.clearInterval(timer); }, [axisPlaying]);
   const axisLabel = axisAngle >= 30 && axisAngle <= 70 ? "Normal axis (PDF: +30° to +70°)" : axisAngle >= 0 && axisAngle < 30 ? "Horizontal axis (0° to +30°)" : axisAngle > 70 && axisAngle <= 90 ? "Vertical axis (+70° to +90°)" : axisAngle < 0 ? "Left axis deviation (0° to −90°)" : "Right axis deviation (+90° to +180°)";
   const current = questions[question];
 
@@ -147,7 +159,11 @@ export default function EcgLab() {
           </div>
         </div>
         <div className="ecg-axis-lab">
-          <div><p className="ecg-overline">LIVE MODEL / 02</p><h3>Watch the mean QRS axis sweep.</h3><p>The mean QRS vector moves automatically through the frontal-plane hexaxial reference system. This is an animated teaching sweep, not a real-time change in a patient's cardiac axis; clinical axis is calculated from measured limb-lead QRS deflections.</p><div className="ecg-axis-status">AUTOMATIC DEMONSTRATION · {axisAngle}° · {axisLabel}</div></div>
+          <div><p className="ecg-overline">LIVE MODEL / 02</p><h3>Mean QRS axis: guided automatic tour</h3><p>The vector moves automatically between important reference angles and pauses briefly at each one.</p>
+            <div className="ecg-axis-status">PAUSE POINT {axisIndex+1} / {axisStops.length} · {axisAngle}° · {axisLabel}</div>
+            <div className="ecg-axis-stop-info"><strong>{axisStops[axisIndex].title}</strong><p>{axisStops[axisIndex].info}</p></div>
+            <button type="button" className="ecg-axis-play-toggle" onClick={()=>setAxisPlaying(v=>!v)}>{axisPlaying ? "Ⅱ Pause tour" : "▶ Resume tour"}</button>
+          </div>
           <div className="ecg-axis-visual-wrap"><AxisVisual angle={axisAngle}/></div>
         </div>        </div>
       </div>
