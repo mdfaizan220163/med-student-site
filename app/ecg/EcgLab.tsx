@@ -128,7 +128,7 @@ function Heart3DVisual({ stage }: { stage: number }) {
         ctx.strokeStyle="rgba(255,190,190,0.10)";ctx.lineWidth=0.7*dpr;ctx.stroke();
       }
       // Four-chamber teaching grooves and the conduction route are drawn in the same 3D projection.
-      const project=(p)=>{const q=rotate(p,rx,ry),k=2.8/(2.8-q.z);return {x:w*.5+q.x*w*.30*k,y:h*.51-q.y*h*.32*k};};
+      const project=(p:{x:number;y:number;z:number})=>{const q=rotate(p,rx,ry),k=2.8/(2.8-q.z);return {x:w*.5+q.x*w*.30*k,y:h*.51-q.y*h*.32*k};};
       const paths=[
         [[-0.25,0.35,0.36],[0.0,0.27,0.39],[0.05,0.04,0.4],[0.04,-0.10,0.4],[-0.18,-0.46,0.34]],
         [[0.05,-0.10,0.4],[0.28,-0.46,0.34]]
