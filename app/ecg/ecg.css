@@ -1,102 +1,63 @@
-/* Correction: retain the dynamic ECG design; notebook styling belongs only
-   to written study-note blocks, not the waveform, hero, or interactive labs. */
-.ecg-page,
-.ecg-page button,
-.ecg-page input,
-.ecg-page p,
-.ecg-page li,
-.ecg-page span,
-.ecg-page label,
-.ecg-page h1,.ecg-page h2,.ecg-page h3,.ecg-page h4{
-  font-family:inherit;
-  letter-spacing:normal;
-}
-.ecg-hero h1{font-size:clamp(40px,5vw,62px);letter-spacing:-.065em}
-.ecg-section-heading h2{letter-spacing:-.055em}
-.ecg-blue-section{background:#163b60;color:#fff}
-.ecg-dark-section,.ecg-quiz-section{background:#0c2038;color:#fff}
-.ecg-conduction-section{background:radial-gradient(circle at 20% 10%,#183e60 0,#0b1d32 56%,#081726 100%);color:#fff}
-.ecg-blue-section .ecg-section-heading h2,
-.ecg-dark-section .ecg-section-heading h2,
-.ecg-quiz-section .ecg-section-heading h2,
-.ecg-conduction-section .ecg-section-heading h2{color:#fff}
-.ecg-blue-section .ecg-section-heading>p,
-.ecg-dark-section .ecg-section-heading>p,
-.ecg-quiz-section .ecg-section-heading>p,
-.ecg-conduction-section .ecg-section-heading>p{color:#c0d0de}
-.ecg-explorer,.ecg-quiz,.ecg-heart-stage,.ecg-stage-panel,.ecg-axis-lab{
-  background:linear-gradient(145deg,#102b45,#0b1e33);
-  border:1px solid #294761;
-  box-shadow:0 18px 44px #0003;
-}
-.ecg-tabs{border-bottom-color:#2d4863}
-.ecg-tabs button{color:#a9bdcf}
-.ecg-tabs button.selected{background:#eaf3fb;color:#163858}
-.ecg-explain-grid article,.ecg-detail-list article{background:#193653;border-color:#2b4b68}
-.ecg-explain-grid h3,.ecg-detail-list b{color:#fff}
-.ecg-explain-grid p,.ecg-detail-list p{color:#b7c8d7}
-.ecg-wave-link{background:#193653;border-color:#3b5c77}
-.ecg-wave-link span{color:#a9c4d9}
-.ecg-wave-link strong{color:#ffcf82}
-.ecg-stage-panel h3,.ecg-axis-lab h3,.ecg-quiz h3{color:#fff}
-.ecg-stage-panel>p,.ecg-axis-lab p{color:#b2c6d8}
-.ecg-axis-slider{color:#dceaf5}
-.ecg-axis-slider strong{color:#ffcf82}
-.ecg-axis-stop-info{background:#173653;border-left-color:#ffcf82}
-.ecg-axis-stop-info strong{color:#ffdc9e}
-.ecg-axis-stop-info p{color:#c4d5e3}
-.ecg-axis-status{background:#193653;color:#b9d8ed}
-.ecg-stage-controls button,.ecg-axis-play-toggle{background:#eaf4fb;color:#163653;border-color:#55718a}
-.ecg-quiz-top,.ecg-feedback{color:#c2d1df}
-.ecg-quiz .ecg-options button{background:#1a3858;color:#dce8f2;border-color:#36536f}
-.ecg-quiz .ecg-options button.correct{background:#194c45;color:#fff}
-.ecg-quiz .ecg-options button.incorrect{background:#512e3a;color:#fff}
-.ecg-lead-grid article{background:#204a70;border-color:#3a6285}
-.ecg-lead-grid article span{color:#a9d0ed}
-.ecg-lead-grid h3{color:#fff}
-.ecg-lead-grid p,.ecg-placement-note{color:#c1d1df}
-.ecg-heart-stage{background-image:radial-gradient(ellipse at 50% 42%,#284968 0,transparent 58%)}
-.ecg-model-tag,.ecg-model-badge{color:#a8c7df;text-shadow:none}
-.ecg-model-stage-card{background:#0b1d32dc;border-color:#496984}
-.ecg-model-stage-card span{color:#9fc4e0}
-.ecg-model-stage-card p{color:#d1dfeb}
-.ecg-model-stage-card strong{color:#ffcf82}
-.ecg-model-tools{background:rgba(9,24,39,.72)}
-.ecg-model-tools button{color:#f1ead7;background:rgba(245,239,222,.07);border-color:rgba(229,219,190,.38)}
+/* Handwritten copy styling: written teaching notes only.
+   Leave the hero waveform, ECG grids, heart animation and interactive models untouched. */
+@import url('https://fonts.googleapis.com/css2?family=Kalam:wght@300;400;700&family=Patrick+Hand&display=swap');
 
-/* Handwritten notebook treatment for written teaching points only */
 .ecg-page .ecg-fact-grid article,
+.ecg-page .ecg-explain-grid article,
+.ecg-page .ecg-detail-list article,
 .ecg-page .ecg-lead-grid article,
 .ecg-page .ecg-measure-facts article,
 .ecg-page .ecg-checklist li,
-.ecg-page .ecg-note{
-  font-family:'Kalam','Comic Sans MS',cursive;
-  background-color:#f8fbff;
+.ecg-page .ecg-note,
+.ecg-page .ecg-placement-note{
+  font-family:'Kalam','Comic Sans MS',cursive !important;
+  background-color:#f8fbff !important;
   background-image:
-    linear-gradient(90deg,transparent 0,transparent 17px,rgba(198,86,94,.22) 17px,rgba(198,86,94,.22) 18px,transparent 18px),
-    repeating-linear-gradient(to bottom,transparent 0,transparent 25px,rgba(81,143,187,.2) 25px,rgba(81,143,187,.2) 26px);
-  background-size:auto;
-  border:1px solid #c6d7e3;
-  border-radius:3px;
-  box-shadow:2px 3px 0 rgba(53,91,119,.1);
-  color:#294762;
-  padding-left:25px;
+    linear-gradient(90deg,transparent 0,transparent 19px,rgba(197,82,91,.25) 19px,rgba(197,82,91,.25) 20px,transparent 20px),
+    repeating-linear-gradient(to bottom,transparent 0,transparent 25px,rgba(79,142,188,.23) 25px,rgba(79,142,188,.23) 26px) !important;
+  background-size:auto !important;
+  border:1px solid #c5d8e6 !important;
+  border-radius:3px !important;
+  box-shadow:2px 3px 0 rgba(53,91,119,.10) !important;
+  color:#294762 !important;
 }
+.ecg-page .ecg-fact-grid article,
+.ecg-page .ecg-explain-grid article,
+.ecg-page .ecg-detail-list article,
+.ecg-page .ecg-lead-grid article,
+.ecg-page .ecg-measure-facts article{padding:18px 16px 18px 29px !important}
 .ecg-page .ecg-fact-grid article b,
+.ecg-page .ecg-explain-grid article h3,
+.ecg-page .ecg-detail-list article b,
 .ecg-page .ecg-lead-grid article h3,
 .ecg-page .ecg-measure-facts article strong{
-  font-family:'Patrick Hand','Comic Sans MS',cursive;
-  color:#244b6a;
+  font-family:'Patrick Hand','Comic Sans MS',cursive !important;
+  color:#214b6d !important;
+  font-size:17px;
+  font-weight:700;
 }
 .ecg-page .ecg-fact-grid article p,
+.ecg-page .ecg-explain-grid article p,
+.ecg-page .ecg-detail-list article p,
 .ecg-page .ecg-lead-grid article p,
-.ecg-page .ecg-measure-facts article span{color:#45657d}
-.ecg-page .ecg-note{background-color:#fff9df;border-left:3px solid #c58d43;color:#65583f}
-.ecg-page .ecg-checklist li{display:flex;align-items:center}
-@media(max-width:760px){
- .ecg-page .ecg-fact-grid article,
- .ecg-page .ecg-lead-grid article,
- .ecg-page .ecg-measure-facts article,
- .ecg-page .ecg-checklist li,
- .ecg-page .ecg-note{background-size:auto}
+.ecg-page .ecg-measure-facts article span{
+  font-family:'Kalam','Comic Sans MS',cursive !important;
+  color:#3e607b !important;
+  font-size:13px;
+  line-height:1.9;
+}
+.ecg-page .ecg-explain-grid article{align-items:flex-start}
+.ecg-page .ecg-explain-grid .ecg-wave-letter{font-family:'Patrick Hand','Comic Sans MS',cursive;color:#a34c51}
+.ecg-page .ecg-checklist li{padding:12px 14px 12px 28px !important;font-size:13px}
+.ecg-page .ecg-checklist li span{font-family:'Patrick Hand','Comic Sans MS',cursive;color:#a34c51}
+.ecg-page .ecg-note{
+  background-color:#fff9df !important;
+  border-left:3px solid #c58d43 !important;
+  color:#65583f !important;
+  padding:13px 15px 13px 29px !important;
+}
+.ecg-page .ecg-placement-note{
+  display:block;
+  padding:13px 15px 13px 29px;
+  line-height:1.9;
 }
