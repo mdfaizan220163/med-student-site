@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 
 const questions = [
   { q: "Which ECG wave represents atrial depolarization?", options: ["P wave", "QRS complex", "T wave"], answer: 0, explain: "The P wave represents electrical activation (depolarization) of the atria." },
@@ -69,6 +69,87 @@ function AxisVisual({ angle }: { angle: number }) {
   </svg>;
 }
 
+
+function Heart3DVisual({ stage }: { stage: number }) {
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const dragRef = useRef({ down: false, x: 0, y: 0, rx: -0.16, ry: 0.38 });
+  useEffect(() => {
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+    const ctx = canvas.getContext("2d");
+    if (!ctx) return;
+    let frame = 0;
+    let raf = 0;
+    const dpr = Math.min(window.devicePixelRatio || 1, 2);
+    const resize = () => {
+      const box = canvas.getBoundingClientRect();
+      canvas.width = Math.max(1, Math.floor(box.width * dpr));
+      canvas.height = Math.max(1, Math.floor(box.height * dpr));
+    };
+    resize();
+    const observer = new ResizeObserver(resize);
+    observer.observe(canvas);
+    const contour = [];
+    for (let i=0;i<100;i++) {
+      const t = Math.PI*2*i/100;
+      const x = 16*Math.pow(Math.sin(t),3);
+      const y = 13*Math.cos(t)-5*Math.cos(2*t)-2*Math.cos(3*t)-Math.cos(4*t);
+      contour.push({x:x/17,y:y/17});
+    }
+    const vertices = [];
+    const depth = [-0.34,-0.28,-0.20,0,0.20,0.28,0.34];
+    for (let z of depth) for (let p of contour) vertices.push({x:p.x*(1+0.10*Math.cos(z*4)),y:p.y,z});
+    const triangles = [];
+    const n=contour.length;
+    for(let k=0;k<depth.length-1;k++) for(let i=0;i<n;i++){
+      const a=k*n+i,b=k*n+(i+1)%n,c=(k+1)*n+i,d=(k+1)*n+(i+1)%n;
+      triangles.push([a,b,c],[b,d,c]);
+    }
+    for(let i=1;i<n-1;i++){triangles.push([0,i,i+1]);const q=(depth.length-1)*n;triangles.push([q,q+i+1,q+i]);}
+    const rotate=(p,rx,ry)=>{
+      const cy=Math.cos(ry),sy=Math.sin(ry),cx=Math.cos(rx),sx=Math.sin(rx);
+      const x=p.x*cy-p.z*sy,z=p.x*sy+p.z*cy;
+      return {x,y:p.y*cx-z*sx,z:p.y*sx+z*cx};
+    };
+    const draw=()=>{
+      frame+=0.025;
+      const w=canvas.width,h=canvas.height;
+      ctx.clearRect(0,0,w,h);
+      const pulse=1+0.025*Math.sin(frame*2.4);
+      const {rx,ry}=dragRef.current;
+      const transformed=vertices.map(p=>{const q=rotate({x:p.x*pulse,y:p.y*pulse,z:p.z*pulse},rx,ry);const perspective=2.8/(2.8-q.z);return {...q,sx:w*.5+q.x*w*.30*perspective,sy:h*.51-q.y*h*.32*perspective};});
+      const faces=triangles.map(tri=>{const a=transformed[tri[0]],b=transformed[tri[1]],c=transformed[tri[2]];return {a,b,c,z:(a.z+b.z+c.z)/3};}).sort((a,b)=>a.z-b.z);
+      for(const f of faces){
+        const ux=f.b.sx-f.a.sx,uy=f.b.sy-f.a.sy,vx=f.c.sx-f.a.sx,vy=f.c.sy-f.a.sy;
+        const light=Math.max(0,Math.min(1,0.48+(-ux*vy+uy*vx)/Math.max(1,w*h)*900));
+        ctx.beginPath();ctx.moveTo(f.a.sx,f.a.sy);ctx.lineTo(f.b.sx,f.b.sy);ctx.lineTo(f.c.sx,f.c.sy);ctx.closePath();
+        ctx.fillStyle="rgb("+(112+Math.round(light*90))+","+(25+Math.round(light*46))+","+(49+Math.round(light*50))+")";ctx.fill();
+        ctx.strokeStyle="rgba(255,190,190,0.10)";ctx.lineWidth=0.7*dpr;ctx.stroke();
+      }
+      // Four-chamber teaching grooves and the conduction route are drawn in the same 3D projection.
+      const project=(p)=>{const q=rotate(p,rx,ry),k=2.8/(2.8-q.z);return {x:w*.5+q.x*w*.30*k,y:h*.51-q.y*h*.32*k};};
+      const paths=[
+        [[-0.25,0.35,0.36],[0.0,0.27,0.39],[0.05,0.04,0.4],[0.04,-0.10,0.4],[-0.18,-0.46,0.34]],
+        [[0.05,-0.10,0.4],[0.28,-0.46,0.34]]
+      ];
+      ctx.lineCap="round";ctx.lineJoin="round";
+      for(const path of paths){ctx.beginPath();path.forEach((p,i)=>{const q=project({x:p[0],y:p[1],z:p[2]});if(i===0)ctx.moveTo(q.x,q.y);else ctx.lineTo(q.x,q.y);});ctx.strokeStyle="#ffe78a";ctx.lineWidth=4*dpr;ctx.setLineDash([6*dpr,5*dpr]);ctx.stroke();}
+      ctx.setLineDash([]);
+      const dots=[[-.25,.35,.37],[-.12,.23,.4],[.02,.06,.41],[.18,-.23,.39],[.28,-.46,.35]];
+      const p=project(dots[Math.min(stage,4)].reduce((o,v,i)=>{o[["x","y","z"][i]]=v;return o;},{}));
+      ctx.beginPath();ctx.arc(p.x,p.y,7*dpr,0,Math.PI*2);ctx.fillStyle="#fff0a6";ctx.shadowColor="#ffe78a";ctx.shadowBlur=18*dpr;ctx.fill();ctx.shadowBlur=0;
+      raf=requestAnimationFrame(draw);
+    };
+    draw();
+    const down=(e:PointerEvent)=>{dragRef.current.down=true;dragRef.current.x=e.clientX;dragRef.current.y=e.clientY;canvas.setPointerCapture(e.pointerId);};
+    const move=(e:PointerEvent)=>{if(!dragRef.current.down)return;const dx=e.clientX-dragRef.current.x,dy=e.clientY-dragRef.current.y;dragRef.current.ry+=dx*.009;dragRef.current.rx=Math.max(-1.1,Math.min(1.1,dragRef.current.rx+dy*.009));dragRef.current.x=e.clientX;dragRef.current.y=e.clientY;};
+    const up=()=>{dragRef.current.down=false;};
+    canvas.addEventListener("pointerdown",down);canvas.addEventListener("pointermove",move);canvas.addEventListener("pointerup",up);canvas.addEventListener("pointercancel",up);
+    return ()=>{cancelAnimationFrame(raf);observer.disconnect();canvas.removeEventListener("pointerdown",down);canvas.removeEventListener("pointermove",move);canvas.removeEventListener("pointerup",up);canvas.removeEventListener("pointercancel",up);};
+  },[stage]);
+  return <div className="ecg-heart-3d-wrap"><canvas ref={canvasRef} className="ecg-heart-3d" aria-label="Interactive three-dimensional heart model; drag to rotate" /><div className="ecg-heart-3d-hint">DRAG TO ROTATE · 3D TEACHING MODEL</div><div className="ecg-heart-3d-legend"><span><i className="blue"/>Right heart</span><span><i className="red"/>Left heart</span><span><i className="gold"/>Electrical pathway</span></div></div>;
+}
+
 export default function EcgLab() {
   const [paused, setPaused] = useState(false);
   const [active, setActive] = useState("waves");
@@ -78,7 +159,7 @@ export default function EcgLab() {
   const [axisAngle, setAxisAngle] = useState(60);
   const [simulationRunning, setSimulationRunning] = useState(true);
   useEffect(() => { if (!simulationRunning) return; const timer = window.setInterval(() => setConductionStep(step => (step + 1) % conductionStages.length), 1800); return () => window.clearInterval(timer); }, [simulationRunning]);
-  const axisLabel = axisAngle >= -30 && axisAngle <= 90 ? "Within commonly used normal range" : axisAngle < -30 ? "Left axis deviation range" : "Right axis deviation range";
+  const axisLabel = axisAngle >= 30 && axisAngle <= 70 ? "Normal axis (PDF: +30° to +70°)" : axisAngle >= 0 && axisAngle < 30 ? "Horizontal axis (0° to +30°)" : axisAngle > 70 && axisAngle <= 90 ? "Vertical axis (+70° to +90°)" : axisAngle < 0 ? "Left axis deviation (0° to −90°)" : "Right axis deviation (+90° to +180°)";
   const current = questions[question];
 
   return <main className="ecg-page">
@@ -101,7 +182,7 @@ export default function EcgLab() {
       <div className="ecg-container ecg-section">
         <div className="ecg-section-heading light"><div><p className="ecg-overline">LIVE MODEL / 01</p><h2>Follow the electrical impulse.</h2></div><p>A synchronized teaching schematic links the conduction sequence to the ECG event. Blood flow and electrical conduction are separate processes.</p></div>
         <div className="ecg-live-lab">
-          <div className="ecg-heart-stage"><div className="ecg-model-tag">FOUR CHAMBERS · CONDUCTION PATHWAY</div><HeartConductionVisual stage={conductionStep}/></div>
+          <div className="ecg-heart-stage"><div className="ecg-model-tag">FOUR CHAMBERS · CONDUCTION PATHWAY</div><Heart3DVisual stage={conductionStep}/></div>
           <div className="ecg-stage-panel">
             <div className="ecg-stage-count">STEP {conductionStep+1} / {conductionStages.length}</div>
             <h3>{conductionStages[conductionStep].title}</h3><p>{conductionStages[conductionStep].detail}</p>
