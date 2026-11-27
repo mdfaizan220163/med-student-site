@@ -165,7 +165,7 @@ export default function EcgLab() {
             <button type="button" className="ecg-axis-play-toggle" onClick={()=>setAxisPlaying(v=>!v)}>{axisPlaying ? "Ⅱ Pause tour" : "▶ Resume tour"}</button>
           </div>
           <div className="ecg-axis-visual-wrap"><AxisVisual angle={axisAngle}/></div>
-        </div>        </div>
+        </div>
       </div>
     </section>
 
