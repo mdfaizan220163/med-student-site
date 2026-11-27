@@ -74,7 +74,10 @@ function AxisVisual({ angle }: { angle: number }) {
 
 function Heart3DVisual({ stage }: { stage: number }) {
   const [viewerReady, setViewerReady] = useState(false);
-  const [viewerFailed, setViewerFailed] = useState(false);\n  const [labelsVisible, setLabelsVisible] = useState(true);\n  const [pulseVisible, setPulseVisible] = useState(true);\n  const [viewKey, setViewKey] = useState(0);
+  const [viewerFailed, setViewerFailed] = useState(false);
+  const [labelsVisible, setLabelsVisible] = useState(true);
+  const [pulseVisible, setPulseVisible] = useState(true);
+  const [viewKey, setViewKey] = useState(0);
   const stages = [
     { name: "SA node", note: "The impulse begins high in the right atrium." },
     { name: "Atrial pathways", note: "Depolarization spreads across the right and left atria toward the AV node (P wave)." },
@@ -96,7 +99,8 @@ function Heart3DVisual({ stage }: { stage: number }) {
       {pulseVisible && <circle className="ecg-impulse-particle" r="3.1"><animateMotion dur="2.8s" repeatCount="indefinite" path={activePath}/></circle>}
       <g className={labelsVisible ? "ecg-impulse-labels" : "ecg-impulse-labels is-hidden"}><text x="75" y="20">SA</text><text x="53" y="58">AV</text><text x="52" y="66">His</text><text x="18" y="94">RBB</text><text x="70" y="94">LBB</text></g>
     </svg>
-    <div className="ecg-model-tools"><button type="button" onClick={() => setPulseVisible(v => !v)}>{pulseVisible ? "Ⅱ Pause impulse" : "▶ Play impulse"}</button><button type="button" onClick={() => setLabelsVisible(v => !v)}>{labelsVisible ? "Hide labels" : "Show labels"}</button><button type="button" onClick={() => setViewKey(v => v + 1)}>Reset view ↺</button></div>\n    <div className="ecg-model-badge">ANATOMY MODEL · DRAG TO ROTATE · PINCH / SCROLL TO ZOOM</div>
+    <div className="ecg-model-tools"><button type="button" onClick={() => setPulseVisible(v => !v)}>{pulseVisible ? "Ⅱ Pause impulse" : "▶ Play impulse"}</button><button type="button" onClick={() => setLabelsVisible(v => !v)}>{labelsVisible ? "Hide labels" : "Show labels"}</button><button type="button" onClick={() => setViewKey(v => v + 1)}>Reset view ↺</button></div>
+    <div className="ecg-model-badge">ANATOMY MODEL · DRAG TO ROTATE · PINCH / SCROLL TO ZOOM</div>
     <div className="ecg-model-stage-card"><span>LIVE CONDUCTION STEP {stage + 1} / 5</span><strong>{stages[stage].name}</strong><p>{stages[stage].note}</p></div>
     <div className="ecg-heart-3d-legend"><span><i className="blue"/>Right heart / venous side</span><span><i className="red"/>Left heart / arterial side</span><span><i className="gold"/>Electrical impulse (schematic overlay)</span></div>
   </div>;
