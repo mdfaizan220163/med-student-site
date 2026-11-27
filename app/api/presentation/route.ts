@@ -1,6 +1,7 @@
 import {NextRequest,NextResponse} from "next/server";
 import PptxGenJS from "pptxgenjs";
-import {generateWithFallback} from "@/lib/ai-providers";
+import {generateWithFallback,Part} from "@/lib/ai-providers";
+import {getYandexMedicalMaterials,rankLibraryImage} from "@/lib/yandex-medical-library";
 
 export const runtime="nodejs";
 export const maxDuration=240;
@@ -249,6 +250,14 @@ export async function POST(req:NextRequest){
   }
 
   const sources=clean(form.get("sources"),"upload,web,ai").split(",").filter(Boolean);
+  const yandexLibrary=sources.includes("yandex") || process.env.YANDEX_DISK_PUBLIC_URL
+    ? await getYandexMedicalMaterials(topic)
+    : {documents:[],images:[],itemCount:0};
+  const usedImageNames=new Set<string>();
+  for(const image of yandexLibrary.images){
+    if(images.some(existing=>existing.name.toLowerCase()===image.name.toLowerCase()))continue;
+    images.push({name:image.name,data:image.data,type:image.mime});
+  }
   const research=await recentPubMed(topic);
   const researchContext=research.length?JSON.stringify(research):"No recent PubMed records were retrieved; do not invent recent research.";
   const isHypersensitivity=/hypersensitivity/i.test(topic);
@@ -280,7 +289,15 @@ export async function POST(req:NextRequest){
   const isFoodborneIntoxication = /foodborne intoxication|food poisoning|staphylococcus aureus.*clostridium botulinum|clostridium botulinum.*staphylococcus aureus/i.test(topic);
   let result = isFoodborneIntoxication
     ? {answer:JSON.stringify({title:"Foodborne Intoxications: Staphylococcus aureus and Clostridium botulinum",subtitle:"Toxin-mediated food poisoning · morphology, pathogenesis, diagnosis and prevention",slides:foodborneOutline}),provider:"verified-medical-outline"}
-    : await generateWithFallback([{role:"user",content:prompt}], system, provider, 5000);
+    : await generateWithFallback([{
+        role:"user",
+        content:[
+          {type:"text",text:prompt + (yandexLibrary.documents.length
+            ? "\\n\\nUse the attached Yandex Disk medical PDFs as primary source material for the slide content. Preserve their medical terminology and explanations. Do not add book/page numbers."
+            : "\\n\\nNo Yandex PDF was retrieved for this presentation. Do not claim the slides are based on Yandex documents.")},
+          ...yandexLibrary.documents.slice(0,3).map(doc=>({type:"document" as const,name:doc.name,mime:"application/pdf" as const,data:doc.data}))
+        ]
+      }], system, provider, 5000);
   const parseOutline = (answer: string): {title?:string;subtitle?:string;slides?:Slide[]} => {
     const cleaned = answer.replace(/^\uFEFF/,"").replace(/^\x60\x60\x60(?:json)?\s*/i,"").replace(/\s*\x60\x60\x60$/,"").trim();
     const first = cleaned.indexOf("{");
@@ -340,9 +357,12 @@ export async function POST(req:NextRequest){
    // For the verified foodborne-intoxication deck, use editable topic-specific schematics
    // rather than unverified search hits (which previously returned infant/wound botulism photos).
    if(isFoodborneIntoxication)return null;
-   if(sources.includes("upload")&&images[index%Math.max(images.length,1)]){
-    const im=images[index%images.length];
-    return {data:im.data,mime:im.type,title:im.name,page:"User-provided image",license:"User supplied",artist:"User supplied",animated:false};
+   if(sources.includes("upload") || sources.includes("yandex")){
+    const matched=rankLibraryImage(images.map(im=>({name:im.name,data:im.data,mime:im.type as "image/jpeg"|"image/png"|"image/webp",score:0})), topic+" "+item.title+" "+(item.visual||""), usedImageNames);
+    if(matched){
+      usedImageNames.add(matched.name.toLowerCase());
+      return {data:matched.data,mime:matched.mime,title:matched.name,page:"User-provided image",license:"User supplied",artist:"User supplied",animated:false};
+    }
    }
    if(sources.includes("web"))return await fetchCommonsVisual(getSlideVisualQuery(topic,item.title,item.visual),false);
    return null;
@@ -350,7 +370,7 @@ export async function POST(req:NextRequest){
   // A failed external image search must not cancel the whole presentation.
   // Each slide still receives an editable, topic-specific PowerPoint diagram below.
   const externalImageCount=visualAssets.filter(Boolean).length;
-  console.info("[Faizan AI] External medical images retrieved", {externalImageCount,totalSlides:slides.length});
+  console.info("[Faizan AI] External medical images retrieved", {externalImageCount,totalSlides:slides.length,yandexPdfs:yandexLibrary.documents.length,yandexImages:yandexLibrary.images.length,libraryItems:yandexLibrary.itemCount});
   // One optional GIF is embedded when Commons has a relevant animated medical asset.
   let animatedAsset:MedicalVisual|null=null;
   if(sources.includes("web"))animatedAsset=await fetchCommonsVisual(topic+" "+clean(slides[0]?.title),true);
