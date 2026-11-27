@@ -1,6 +1,7 @@
 import {NextRequest,NextResponse} from "next/server";
 import PptxGenJS from "pptxgenjs";
 import {generateWithFallback} from "@/lib/ai-providers";
+import {loadYandexStudyLibrary} from "@/lib/yandex-study-library";
 
 export const runtime="nodejs";
 export const maxDuration=240;
@@ -237,6 +238,7 @@ export async function POST(req:NextRequest){
   const language=clean(form.get("language"),"English");
   const count=Math.min(20,Math.max(5,Number(form.get("slides"))||10));
   const provider=clean(form.get("provider"),"auto");
+  const template=clean(form.get("template"),"clinical");
   if(!topic||topic.length>300)return NextResponse.json({error:"Enter a topic (maximum 300 characters)."},{status:400});
 
   const images:{name:string;data:string;type:string}[]=[];
@@ -249,6 +251,8 @@ export async function POST(req:NextRequest){
   }
 
   const sources=clean(form.get("sources"),"upload,web,ai").split(",").filter(Boolean);
+  let studyLibrary:{text:string;files:string[];warnings:string[]}={text:"",files:[],warnings:[]};
+  if(sources.includes("yandex")) studyLibrary=await loadYandexStudyLibrary();
   const research=await recentPubMed(topic);
   const researchContext=research.length?JSON.stringify(research):"No recent PubMed records were retrieved; do not invent recent research.";
   const isHypersensitivity=/hypersensitivity/i.test(topic);
@@ -276,11 +280,12 @@ export async function POST(req:NextRequest){
    {title:"Botulism: Diagnosis, Treatment and Prevention",bullets:["Suspect botulism from the characteristic cranial-nerve palsies and descending flaccid paralysis; do not wait for laboratory confirmation to act.","Confirmation may involve detection of botulinum toxin in serum, stool or implicated food, and/or recovery of toxigenic Clostridium from appropriate specimens.","Give botulinum antitoxin as early as possible and provide close respiratory monitoring and ventilatory support when needed; antitoxin neutralizes circulating toxin but cannot reverse toxin already bound to nerve endings.","Prevent foodborne botulism with validated pressure canning of low-acid foods, safe food handling and discarding bulging, leaking or suspicious containers; never taste-test suspect food."],visual:"Emergency management and prevention flowchart: recognize cranial nerve palsies/descending weakness → contact public health and give antitoxin promptly → monitor breathing/support ventilation; pressure-can low-acid foods."}
   ];
   const prompt=`Create a medically accurate MBBS teaching presentation in ${language} about this exact topic: "${topic}".${pathologyOnly ? " STRICT SCOPE: PATHOLOGICAL ANATOMY ONLY. Use the supplied pathology-focused outline verbatim as the content basis; do not replace it with immunology teaching. Gross/macro morphology and microscopic morphology are the central content on every disease slide. Explain the actual affected organ, its cut-surface/visible appearance, and the tissue-level lesion. Mention immune mechanism only in one short orienting phrase where essential. Do not invent gross changes where none are characteristic; explicitly say when gross appearance is variable or nonspecific. Do not describe normal gross anatomy as a substitute for pathological morphology." : ""} STRICT TOPIC FIDELITY: every slide title, bullet, example, clinical condition, and visual must directly teach this topic. Do not drift into neighboring subjects or add unrelated diseases, case reports, or generic medical facts. Use a coherent textbook-style sequence. Use precise standard medical terminology and explain morphology rather than vague statements. If a detail is uncertain, omit it instead of guessing. Do not create research claims or citations from article titles. Do not invent numerical values, guidelines, references, or facts. Return only JSON: {"title":"...","subtitle":"...","slides":[{"title":"...","bullets":["..."],"visual":"..."}]}. Create exactly ${count-1} content slides (the cover is an additional first slide, making ${count} slides total), with 3-5 concise, topic-specific bullets per slide. The final content slide must be a summary with 2-3 review questions. Each visual field must describe a specific labeled medical illustration, gross specimen, histology image, or morphology comparison that genuinely matches that slide.${pathologyOnly ? " Use these exact nine slide topics and facts as the source outline; preserve all gross and microscopic findings and do not substitute a generic mechanism diagram: "+JSON.stringify(hypersensitivityOutline) : ""}`;
+  const sourcePrompt=studyLibrary.text ? "\n\nPRIMARY SOURCE MATERIAL FROM YANDEX DISK. Use these notes as the main content authority for the requested topic. Preserve terminology, key facts, morphology and classification. Synthesize rather than copy long passages. Do not invent details missing from the notes. Source files: "+studyLibrary.files.join("; ")+"\n\nSTUDY NOTES:\n"+studyLibrary.text : "";
   const system = "Create medically accurate MBBS slides. Return exactly one valid JSON object. Use double quotes for every key and string. No markdown fences, comments, or trailing commas. Required shape: {\"title\":\"...\",\"subtitle\":\"...\",\"slides\":[{\"title\":\"...\",\"bullets\":[\"...\"],\"visual\":\"...\"}]}";
   const isFoodborneIntoxication = /foodborne intoxication|food poisoning|staphylococcus aureus.*clostridium botulinum|clostridium botulinum.*staphylococcus aureus/i.test(topic);
   let result = isFoodborneIntoxication
     ? {answer:JSON.stringify({title:"Foodborne Intoxications: Staphylococcus aureus and Clostridium botulinum",subtitle:"Toxin-mediated food poisoning · morphology, pathogenesis, diagnosis and prevention",slides:foodborneOutline}),provider:"verified-medical-outline"}
-    : await generateWithFallback([{role:"user",content:prompt}], system, provider, 5000);
+    : await generateWithFallback([{role:"user",content:prompt+sourcePrompt}], system, provider, 5000);
   const parseOutline = (answer: string): {title?:string;subtitle?:string;slides?:Slide[]} => {
     const cleaned = answer.replace(/^\uFEFF/,"").replace(/^\x60\x60\x60(?:json)?\s*/i,"").replace(/\s*\x60\x60\x60$/,"").trim();
     const first = cleaned.indexOf("{");
@@ -293,7 +298,7 @@ export async function POST(req:NextRequest){
     outline = parseOutline(result.answer);
     if (!Array.isArray(outline.slides) || !outline.slides.length) throw Error("Missing slides");
   } catch (firstError) {
-    result = await generateWithFallback([{role:"user",content:prompt+"\nYour previous response was invalid JSON. Correct it and return a complete JSON object only. Double-quote every key. No markdown, comments, or trailing commas."}], system, provider, 6000);
+    result = await generateWithFallback([{role:"user",content:prompt+sourcePrompt+"\nYour previous response was invalid JSON. Correct it and return a complete JSON object only. Double-quote every key. No markdown, comments, or trailing commas."}], system, provider, 6000);
     try {
       outline = parseOutline(result.answer);
       if (!Array.isArray(outline.slides) || !outline.slides.length) throw Error("Missing slides");
@@ -329,10 +334,11 @@ export async function POST(req:NextRequest){
   pptx.company="Faizan AI";
   pptx.subject=topic;
   pptx.title=clean(outline.title,topic);
-  // Arial is widely available in PowerPoint and PDF converters; avoid font substitution.
-  pptx.theme={headFontFace:"Arial",bodyFontFace:"Arial"};
-  const navy="102B4E";
-  const mark=(s:PptxGenJS.Slide)=>s.addText("FAIZAN AI",{x:10.15,y:7.13,w:2.45,h:.18,fontFace:"Arial",fontSize:8,bold:true,color:"8BA2B7",align:"right",margin:0});
+  // Coordinated visual themes for generated PowerPoint slides.
+  pptx.theme={headFontFace:"Aptos Display",bodyFontFace:"Aptos"};
+  const palette=template==="atlas"?{navy:"263F39",accent:"B06D48",pale:"F5EEE6",ink:"302F2A",paper:"FCFAF6",muted:"7A756D"}:template==="editorial"?{navy:"30334F",accent:"8173B8",pale:"F1EFF8",ink:"303247",paper:"FBFAFE",muted:"77758A"}:{navy:"102B4E",accent:"3C8DAD",pale:"EAF3F8",ink:"263849",paper:"F7FAFC",muted:"71869A"};
+  const navy=palette.navy,accent=palette.accent,ink=palette.ink,pale=palette.pale;
+  const mark=(s:PptxGenJS.Slide)=>s.addText("FAIZAN AI",{x:10.15,y:7.13,w:2.45,h:.18,fontFace:"Aptos",fontSize:8,bold:true,color:palette.muted,align:"right",margin:0});
 
   const slides=(outline.slides??[]).slice(0,count-1);
   // Retrieve topic-matched, openly licensed Commons visuals. Uploaded images are prioritized and distributed across slides.
@@ -359,10 +365,14 @@ export async function POST(req:NextRequest){
 
   const cover=pptx.addSlide();
   cover.background={color:navy};
-  cover.addText(clean(outline.title,topic),{x:.8,y:1.7,w:11.3,h:1.5,fontFace:"Arial",fontSize:30,bold:true,color:"FFFFFF",fit:"shrink",breakLine:false});
-  cover.addText(clean(outline.subtitle,"Medical learning presentation"),{x:.85,y:3.5,w:10.8,h:.5,fontFace:"Arial",fontSize:17,color:"D5E4F0"});
-
-  cover.addText("Prepared with Faizan AI",{x:.85,y:6.65,w:5,h:.3,fontFace:"Arial",fontSize:11,color:"B8CDDF"});
+  cover.addShape("rect",{x:0,y:0,w:13.333,h:.18,line:{color:accent},fill:{color:accent}});
+  cover.addShape("ellipse",{x:9.55,y:1.05,w:2.65,h:2.65,line:{color:accent,transparency:35,width:2},fill:{color:accent,transparency:78}});
+  cover.addShape("ellipse",{x:10.35,y:2.1,w:1.2,h:1.2,line:{color:"FFFFFF",transparency:55,width:1.2},fill:{color:"FFFFFF",transparency:100}});
+  cover.addText("FAIZAN AI  /  MEDICAL LEARNING",{x:.85,y:1.05,w:6.5,h:.3,fontFace:"Aptos",fontSize:10,bold:true,charSpacing:2,color:accent});
+  cover.addText(clean(outline.title,topic),{x:.8,y:1.85,w:10.7,h:1.55,fontFace:"Aptos Display",fontSize:34,bold:true,color:"FFFFFF",fit:"shrink",breakLine:false,margin:0});
+  cover.addShape("rect",{x:.85,y:3.65,w:1.15,h:.07,line:{color:accent},fill:{color:accent}});
+  cover.addText(clean(outline.subtitle,"Medical learning presentation"),{x:.85,y:4.05,w:10.6,h:.65,fontFace:"Aptos",fontSize:17,color:"D5E4F0",fit:"shrink"});
+  cover.addText("Prepared with Faizan AI  ·  Evidence-led medical study",{x:.85,y:6.65,w:7,h:.3,fontFace:"Aptos",fontSize:10,color:"B8CDDF"});
   mark(cover);
   for(let i=0;i<slides.length;i++){
    const item=slides[i];
