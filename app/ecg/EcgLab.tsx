@@ -73,7 +73,12 @@ export default function EcgLab() {
   const [paused, setPaused] = useState(false);
   const [active, setActive] = useState("waves");
   const [answer, setAnswer] = useState<number | null>(null);
-  const [question, setQuestion] = useState(0);\n  const [conductionStep, setConductionStep] = useState(0);\n  const [axisAngle, setAxisAngle] = useState(60);\n  const [simulationRunning, setSimulationRunning] = useState(true);\n  useEffect(() => { if (!simulationRunning) return; const timer = window.setInterval(() => setConductionStep(step => (step + 1) % conductionStages.length), 1800); return () => window.clearInterval(timer); }, [simulationRunning]);\n  const axisLabel = axisAngle >= -30 && axisAngle <= 90 ? "Within commonly used normal range" : axisAngle < -30 ? "Left axis deviation range" : "Right axis deviation range";
+  const [question, setQuestion] = useState(0);
+  const [conductionStep, setConductionStep] = useState(0);
+  const [axisAngle, setAxisAngle] = useState(60);
+  const [simulationRunning, setSimulationRunning] = useState(true);
+  useEffect(() => { if (!simulationRunning) return; const timer = window.setInterval(() => setConductionStep(step => (step + 1) % conductionStages.length), 1800); return () => window.clearInterval(timer); }, [simulationRunning]);
+  const axisLabel = axisAngle >= -30 && axisAngle <= 90 ? "Within commonly used normal range" : axisAngle < -30 ? "Left axis deviation range" : "Right axis deviation range";
   const current = questions[question];
 
   return <main className="ecg-page">
