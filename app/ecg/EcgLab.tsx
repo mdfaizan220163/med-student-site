@@ -74,7 +74,7 @@ function AxisVisual({ angle }: { angle: number }) {
 
 function Heart3DVisual({ stage }: { stage: number }) {
   const [viewerReady, setViewerReady] = useState(false);
-  const [viewerFailed, setViewerFailed] = useState(false);
+  const [viewerFailed, setViewerFailed] = useState(false);\n  const [labelsVisible, setLabelsVisible] = useState(true);\n  const [pulseVisible, setPulseVisible] = useState(true);\n  const [viewKey, setViewKey] = useState(0);
   const stages = [
     { name: "SA node", note: "The impulse begins high in the right atrium." },
     { name: "Atrial pathways", note: "Depolarization spreads across the right and left atria toward the AV node (P wave)." },
@@ -87,16 +87,16 @@ function Heart3DVisual({ stage }: { stage: number }) {
   return <div className="ecg-anatomical-model">
     <Script src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js" type="module" strategy="afterInteractive" onReady={() => setViewerReady(true)} onError={() => setViewerFailed(true)} />
     <div className="ecg-anatomical-viewer">
-      {viewerReady ? <ModelViewer src="/models/anatomical-human-heart.glb" alt="Three-dimensional anatomical human heart model" camera-controls auto-rotate rotation-per-second="12deg" shadow-intensity="1" exposure="1.15" camera-orbit="0deg 75deg 2.6m" interaction-prompt="auto" reveal="auto" /> : <div className="ecg-model-loading" role="status">{viewerFailed ? "3D viewer could not load. Check your internet connection and reload this page." : "Loading anatomical 3D heart…"}</div>}
+      {viewerReady ? <ModelViewer key={viewKey} src="/models/anatomical-human-heart.glb" alt="Three-dimensional anatomical human heart model" camera-controls auto-rotate rotation-per-second="12deg" shadow-intensity="1" exposure="1.15" camera-orbit="0deg 75deg 2.6m" interaction-prompt="auto" reveal="auto" /> : <div className="ecg-model-loading" role="status">{viewerFailed ? "3D viewer could not load. Check your internet connection and reload this page." : "Loading anatomical 3D heart…"}</div>}
     </div>
     <svg className={`ecg-impulse-overlay stage-${stage}`} viewBox="0 0 100 100" aria-label="Schematic electrical conduction pathway overlay" role="img">
       <path className="ecg-impulse-route" d="M 72 22 Q 56 32 49 47 L 50 58 L 50 69 L 32 88 M 50 69 L 68 88" />
       <path className="ecg-impulse-active" d={activePath} />
       <g className="ecg-impulse-nodes"><circle cx="72" cy="22" r="2.6"/><circle cx="49" cy="47" r="2.3"/><circle cx="50" cy="58" r="2.3"/><circle cx="50" cy="69" r="2.3"/><circle cx="32" cy="88" r="2"/><circle cx="68" cy="88" r="2"/></g>
-      <circle className="ecg-impulse-particle" r="3.1"><animateMotion dur="2.8s" repeatCount="indefinite" path={activePath}/></circle>
-      <g className="ecg-impulse-labels"><text x="75" y="20">SA</text><text x="53" y="58">AV</text><text x="52" y="66">His</text><text x="18" y="94">RBB</text><text x="70" y="94">LBB</text></g>
+      {pulseVisible && <circle className="ecg-impulse-particle" r="3.1"><animateMotion dur="2.8s" repeatCount="indefinite" path={activePath}/></circle>}
+      <g className={labelsVisible ? "ecg-impulse-labels" : "ecg-impulse-labels is-hidden"}><text x="75" y="20">SA</text><text x="53" y="58">AV</text><text x="52" y="66">His</text><text x="18" y="94">RBB</text><text x="70" y="94">LBB</text></g>
     </svg>
-    <div className="ecg-model-badge">3D ANATOMY · ROTATE / ZOOM · ELECTRICAL ROUTE OVERLAY</div>
+    <div className="ecg-model-tools"><button type="button" onClick={() => setPulseVisible(v => !v)}>{pulseVisible ? "Ⅱ Pause impulse" : "▶ Play impulse"}</button><button type="button" onClick={() => setLabelsVisible(v => !v)}>{labelsVisible ? "Hide labels" : "Show labels"}</button><button type="button" onClick={() => setViewKey(v => v + 1)}>Reset view ↺</button></div>\n    <div className="ecg-model-badge">ANATOMY MODEL · DRAG TO ROTATE · PINCH / SCROLL TO ZOOM</div>
     <div className="ecg-model-stage-card"><span>LIVE CONDUCTION STEP {stage + 1} / 5</span><strong>{stages[stage].name}</strong><p>{stages[stage].note}</p></div>
     <div className="ecg-heart-3d-legend"><span><i className="blue"/>Right heart / venous side</span><span><i className="red"/>Left heart / arterial side</span><span><i className="gold"/>Electrical impulse (schematic overlay)</span></div>
   </div>;
