@@ -23,7 +23,7 @@ export async function POST(req:NextRequest){try{
  const enriched:Message[]=messages.map((m)=>({...m}));
  if(library.documents.length||library.images.length){
    const extra:Part[]=[];
-   for(const doc of library.documents.slice(0,3))extra.push({type:"document",name:doc.name,mime:"application/pdf",data:doc.data});
+   for(const doc of library.documents.slice(0,3))extra.push({type:"file_pdf",name:doc.name,data:doc.data});
    for(const image of library.images.filter((im)=>im.score>0).slice(0,2))extra.push({type:"image_url",image_url:{url:`data:${image.mime};base64,${image.data}`}});
    const last=enriched[enriched.length-1];
    const original:Part[]=typeof last.content==="string"?[{type:"text",text:last.content}]:last.content;
