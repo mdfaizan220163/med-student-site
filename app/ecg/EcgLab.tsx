@@ -75,9 +75,6 @@ function AxisVisual({ angle }: { angle: number }) {
 function Heart3DVisual({ stage }: { stage: number }) {
   const [viewerReady, setViewerReady] = useState(false);
   const [viewerFailed, setViewerFailed] = useState(false);
-  const [labelsVisible, setLabelsVisible] = useState(true);
-  const [pulseVisible, setPulseVisible] = useState(true);
-  const [viewKey, setViewKey] = useState(0);
   const stages = [
     { name: "SA node", note: "The impulse begins high in the right atrium." },
     { name: "Atrial pathways", note: "Depolarization spreads across the right and left atria toward the AV node (P wave)." },
@@ -86,23 +83,22 @@ function Heart3DVisual({ stage }: { stage: number }) {
     { name: "Ventricular recovery", note: "Ventricular cells repolarize; the ECG shows the T wave." },
   ];
   const ModelViewer = "model-viewer" as any;
-  const activePath = stage === 0 ? "M 50 18" : stage === 1 ? "M 50 18 Q 43 26 44 38" : stage === 2 ? "M 50 18 Q 43 26 44 38 L 50 48" : stage === 3 ? "M 50 18 Q 43 26 44 38 L 50 48 L 50 62 Q 42 73 35 82 M 50 62 Q 58 73 65 82" : "M 50 18 Q 43 26 44 38 L 50 48 L 50 62 Q 42 73 35 82 M 50 62 Q 58 73 65 82";
+  const activePath = "M 50 18 Q 43 26 44 38 Q 48 43 50 48 L 50 62 Q 42 73 35 82 M 50 62 Q 58 73 65 82";
   return <div className="ecg-anatomical-model">
     <Script src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js" type="module" strategy="afterInteractive" onReady={() => setViewerReady(true)} onError={() => setViewerFailed(true)} />
     <div className="ecg-model-visual">
       <div className="ecg-anatomical-viewer">
-        {viewerReady ? <ModelViewer key={viewKey} src="/models/anatomical-human-heart.glb" alt="Three-dimensional anatomical human heart model"  shadow-intensity="1" exposure="1.15" camera-orbit="0deg 75deg 2.6m" interaction-prompt="auto" reveal="auto" /> : <div className="ecg-model-loading" role="status">{viewerFailed ? "3D viewer could not load. Check your internet connection and reload this page." : "Loading anatomical 3D heart…"} </div>}
+        {viewerReady ? <ModelViewer src="/models/anatomical-human-heart.glb" alt="Three-dimensional anatomical human heart model"  shadow-intensity="1" exposure="1.15" camera-orbit="0deg 75deg 2.6m" interaction-prompt="auto" reveal="auto" /> : <div className="ecg-model-loading" role="status">{viewerFailed ? "3D viewer could not load. Check your internet connection and reload this page." : "Loading anatomical 3D heart…"} </div>}
       </div>
       <svg className={`ecg-impulse-overlay stage-${stage}`} viewBox="0 0 100 100" aria-label="Schematic electrical conduction pathway overlay" role="img">
         <path className="ecg-impulse-route" d="M 50 18 Q 43 26 44 38 L 50 48 L 50 62 Q 42 73 35 82 M 50 62 Q 58 73 65 82" />
         <path className="ecg-impulse-active" d={activePath} />
         <g className="ecg-impulse-nodes"><circle cx="50" cy="18" r="2.2"/><circle cx="44" cy="38" r="2"/><circle cx="50" cy="48" r="2"/><circle cx="50" cy="62" r="2"/><circle cx="35" cy="82" r="1.8"/><circle cx="65" cy="82" r="1.8"/></g>
-        {pulseVisible && <circle className="ecg-impulse-particle" r="2.6"><animateMotion dur="2.8s" repeatCount="indefinite" path={activePath}/></circle>}
-        <g className={labelsVisible ? "ecg-impulse-labels" : "ecg-impulse-labels is-hidden"}><text x="54" y="17">SA</text><text x="54" y="49">AV</text><text x="54" y="61">His</text><text x="18" y="86">RBB</text><text x="68" y="86">LBB</text></g>
+        <circle className="ecg-impulse-particle" r="2.6"><animateMotion dur="2.8s" repeatCount="indefinite" path={activePath}/></circle>
+        <g className="ecg-impulse-labels"><text x="54" y="17">SA</text><text x="54" y="49">AV</text><text x="54" y="61">His</text><text x="18" y="86">RBB</text><text x="68" y="86">LBB</text></g>
       </svg>
       <div className="ecg-model-badge">FRONT VIEW · SCHEMATIC ELECTRICAL PATHWAY</div>
     </div>
-    <div className="ecg-model-tools"><button type="button" onClick={() => setPulseVisible(v => !v)}>{pulseVisible ? "Ⅱ Pause impulse" : "▶ Play impulse"}</button><button type="button" onClick={() => setLabelsVisible(v => !v)}>{labelsVisible ? "Hide labels" : "Show labels"}</button><button type="button" onClick={() => setViewKey(v => v + 1)}>Reset view ↺</button></div>
     <div className="ecg-model-stage-card"><span>LIVE CONDUCTION STEP {stage + 1} / 5</span><strong>{stages[stage].name}</strong><p>{stages[stage].note}</p></div>
     <div className="ecg-heart-3d-legend"><span><i className="blue"/>Right heart / venous side</span><span><i className="red"/>Left heart / arterial side</span><span><i className="gold"/>Electrical impulse (schematic overlay)</span></div>
   </div>;
