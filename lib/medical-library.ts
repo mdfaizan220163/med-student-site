@@ -1,119 +1,21 @@
 import "server-only";
+import { inflateRawSync, inflateSync } from "node:zlib";
 
-type YandexItem = {
-  name?: string;
-  path?: string;
-  type?: "file" | "dir";
-  mime_type?: string;
-  size?: number;
-  _embedded?: { items?: YandexItem[] };
-};
-export type MedicalSource = { title: string; pages: number[]; excerpt: string };
-const API = "https://cloud-api.yandex.net/v1/disk";
-
-function words(value: string) {
-  return [...new Set((value.toLowerCase().match(/[a-z][a-z0-9-]{2,}/g) || [])
-    .filter((w) => !["the", "and", "for", "with", "from", "what", "how", "why", "explain"].includes(w)))];
-}
-function score(text: string, terms: string[]) {
-  const lower = text.toLowerCase();
-  return terms.reduce((n, term) => n + (lower.includes(term) ? 1 + Math.min(3, (lower.match(new RegExp(term, "g")) || []).length - 1) : 0), 0);
-}
-async function yandexJson(url: URL) {
-  const response = await fetch(url, { signal: AbortSignal.timeout(12000), cache: "no-store" });
-  if (!response.ok) throw new Error(`Yandex Disk returned ${response.status}`);
-  return response.json();
-}
-async function listFiles(publicUrl: string): Promise<YandexItem[]> {
-  const found: YandexItem[] = [];
-  const visit = async (path?: string, depth = 0): Promise<void> => {
-    if (depth > 3 || found.length >= 180) return;
-    const url = new URL(`${API}/public/resources`);
-    url.searchParams.set("public_key", publicUrl);
-    url.searchParams.set("limit", "100");
-    if (path) url.searchParams.set("path", path);
-    const data = await yandexJson(url);
-    const items: YandexItem[] = data?._embedded?.items || [];
-    for (const item of items) {
-      if (item.type === "dir") {
-        const child = item.path && item.path !== "/" ? item.path : [path, item.name].filter(Boolean).join("/");
-        await visit(child.startsWith("/") ? child : `/${child}`, depth + 1);
-      } else if (item.type === "file") found.push(item);
-    }
-  };
-  await visit();
-  return found;
-}
-async function downloadPublicFile(publicUrl: string, path: string) {
-  const url = new URL(`${API}/public/resources/download`);
-  url.searchParams.set("public_key", publicUrl);
-  url.searchParams.set("path", path);
-  const link = await yandexJson(url);
-  const response = await fetch(link.href, { signal: AbortSignal.timeout(25000), cache: "no-store" });
-  if (!response.ok) throw new Error("Could not download a reference document.");
-  const bytes = new Uint8Array(await response.arrayBuffer());
-  if (bytes.byteLength > 22 * 1024 * 1024) throw new Error("Reference file is larger than the safe processing limit.");
-  return bytes;
-}
-async function extractPdf(bytes: Uint8Array) {
-  const pdfjs = await import("pdfjs-dist/legacy/build/pdf.mjs");
-  const pdf = await pdfjs.getDocument({ data: bytes, useSystemFonts: true, isEvalSupported: false }).promise;
-  const pages: { page: number; text: string }[] = [];
-  for (let pageNo = 1; pageNo <= Math.min(pdf.numPages, 500); pageNo++) {
-    const page = await pdf.getPage(pageNo);
-    const data = await page.getTextContent();
-    const text = data.items.map((item: { str?: string }) => item.str || "").join(" ").replace(/\s+/g, " ").trim();
-    if (text) pages.push({ page: pageNo, text });
-  }
-  await pdf.destroy();
-  return pages;
-}
-async function extractDocx(bytes: Uint8Array) {
-  const mammoth = await import("mammoth");
-  const result = await mammoth.extractRawText({ buffer: Buffer.from(bytes) });
-  return result.value.replace(/\s+/g, " ").trim();
-}
-
-export async function retrieveMedicalContext(question: string): Promise<{ context: string; sources: MedicalSource[]; status: "found" | "empty" | "unavailable" }> {
-  const publicUrl = process.env.YANDEX_DISK_PUBLIC_URL;
-  if (!publicUrl) return { context: "", sources: [], status: "unavailable" };
-  try {
-    const files = await listFiles(publicUrl);
-    const supported = files.filter((f) => /\.(pdf|docx)$/i.test(f.name || "") && f.path && (f.size || 0) <= 22 * 1024 * 1024);
-    const terms = words(question);
-    const ranked = supported.map((file) => ({
-      file,
-      priority: /robbins.*cotran|cotran.*robbins/i.test(file.name || "") ? 100 : 0,
-      relevance: score(file.name || "", terms),
-    })).sort((a, b) => (b.priority + b.relevance) - (a.priority + a.relevance)).slice(0, 4);
-    const sections: string[] = [];
-    const sources: MedicalSource[] = [];
-    for (const { file } of ranked) {
-      try {
-        const bytes = await downloadPublicFile(publicUrl, file.path!);
-        if (/\.pdf$/i.test(file.name || "")) {
-          const pages = await extractPdf(bytes);
-          const matches = pages.map((p) => ({ ...p, relevance: score(p.text, terms) }))
-            .filter((p) => p.relevance > 0).sort((a, b) => b.relevance - a.relevance).slice(0, 4);
-          if (!matches.length) continue;
-          const selected = matches.sort((a, b) => a.page - b.page);
-          sources.push({ title: file.name || "Medical PDF", pages: selected.map((p) => p.page), excerpt: selected.map((p) => p.text.slice(0, 1800)).join("\n") });
-          sections.push(`SOURCE: ${file.name}\n${selected.map((p) => `PAGE ${p.page}: ${p.text.slice(0, 1800)}`).join("\n\n")}`);
-        } else {
-          const text = await extractDocx(bytes);
-          if (score(text, terms) === 0) continue;
-          const excerpt = text.slice(0, 6500);
-          sources.push({ title: file.name || "Medical DOCX", pages: [], excerpt: excerpt.slice(0, 1200) });
-          sections.push(`SOURCE: ${file.name} (DOCX page numbers unavailable)\n${excerpt}`);
-        }
-      } catch (error) {
-        console.error("Faizan AI library file:", file.name, error);
-      }
-    }
-    if (!sections.length) return { context: "", sources: [], status: "empty" };
-    return { context: sections.join("\n\n---\n\n").slice(0, 18000), sources, status: "found" };
-  } catch (error) {
-    console.error("Faizan AI Yandex library:", error);
-    return { context: "", sources: [], status: "unavailable" };
-  }
-}
+type DiskItem={name?:string;path?:string;type?:"file"|"dir";size?:number;mime_type?:string;_embedded?:{items?:DiskItem[]}};
+export type MedicalSource={title:string;pages:number[];excerpt:string};
+export type MedicalImage={title:string;dataUrl:string;source:string};
+const API="https://cloud-api.yandex.net/v1/disk";
+const termsFor=(s:string)=>[...new Set((s.toLowerCase().match(/[a-z][a-z0-9-]{2,}/g)||[]).filter(x=>!["the","and","for","with","from","what","how","why","explain","about"].includes(x)))];
+const score=(s:string,terms:string[])=>{const t=s.toLowerCase();return terms.reduce((n,w)=>n+(t.includes(w)?1:0),0);};
+async function json(url:URL){const r=await fetch(url,{cache:"no-store",signal:AbortSignal.timeout(15000)});if(!r.ok)throw Error("Yandex public folder API returned "+r.status);return r.json();}
+async function list(publicUrl:string){const out:DiskItem[]=[];const walk=async(path?:string,depth=0):Promise<void>=>{if(depth>4||out.length>200)return;const u=new URL(API+"/public/resources");u.searchParams.set("public_key",publicUrl);u.searchParams.set("limit","100");if(path)u.searchParams.set("path",path);const d=await json(u);for(const f of d?._embedded?.items||[]){if(f.type==="dir"){const p=f.path&&f.path!=="/"?f.path:[path,f.name].filter(Boolean).join("/");await walk(p.startsWith("/")?p:"/"+p,depth+1);}else if(f.type==="file")out.push(f);}};await walk();return out;}
+async function download(publicUrl:string,path:string,max=22*1024*1024){const u=new URL(API+"/public/resources/download");u.searchParams.set("public_key",publicUrl);u.searchParams.set("path",path);const d=await json(u);const r=await fetch(d.href,{cache:"no-store",signal:AbortSignal.timeout(25000)});if(!r.ok)throw Error("Yandex file download failed");const b=new Uint8Array(await r.arrayBuffer());if(b.length>max)throw Error("File exceeds safe processing limit");return b;}
+function unescapePdf(s:string){return s.replace(/\\([nrtbf()\\])/g,(_,c)=>({n:"\n",r:"\r",t:"\t",b:"\b",f:"\f"}[c]??c)).replace(/\\([0-7]{1,3})/g,(_,o)=>String.fromCharCode(parseInt(o,8))).replace(/\\\r?\n/g,"");}
+function pdfString(s:string){try{return decodeURIComponent(escape(s));}catch{return s;}}
+function extractPdf(bytes:Uint8Array){const raw=Buffer.from(bytes).toString("latin1");const streams=new Map<number,string>();const objRe=/(\d+)\s+\d+\s+obj\b([\s\S]*?)endobj/g;let m:RegExpExecArray|null;while((m=objRe.exec(raw))){const id=Number(m[1]),body=m[2],sm=/stream\r?\n([\s\S]*?)\r?\nendstream/.exec(body);if(!sm)continue;let data=Buffer.from(sm[1],"latin1");try{if(/\/FlateDecode/.test(body))data=inflateSync(data);}catch{continue;}const decoded=data.toString("latin1");const textParts:string[]=[];const textOps=/\(((?:\\.|[^\\)])*)\)\s*Tj|\[((?:[\s\S])*?)\]\s*TJ/g;let tm:RegExpExecArray|null;while((tm=textOps.exec(decoded))){if(tm[1]!==undefined)textParts.push(unescapePdf(tm[1]));else{const inner=tm[2];let sm2:RegExpExecArray|null;const strRe=/\(((?:\\.|[^\\)])*)\)/g;while((sm2=strRe.exec(inner)))textParts.push(unescapePdf(sm2[1]));}}if(textParts.length)streams.set(id,textParts.join(" "));}
+const pages:{page:number;text:string}[]=[];let pageNo=0;const pageRe=/\d+\s+\d+\s+obj\b([\s\S]*?)endobj/g;while((m=pageRe.exec(raw))){const b=m[1];if(!/\/Type\s*\/Page\b/.test(b))continue;pageNo++;const refs=[...b.matchAll(/\/Contents\s*(?:\[([^\]]+)\]|(\d+\s+\d+\s+R))/g)].flatMap(x=>(x[1]||x[2]||"").match(/\d+\s+\d+\s+R/g)||[]).map(x=>Number(x.match(/\d+/)?.[0]));const text=refs.map(id=>streams.get(id)||"").join(" ").replace(/\s+/g," ").trim();if(text)pages.push({page:pageNo,text});}
+if(!pages.length){const text=[...streams.values()].join(" ").replace(/\s+/g," ").trim();if(text)pages.push({page:1,text});}return pages;}
+function extractDocx(bytes:Uint8Array){const b=Buffer.from(bytes);let eocd=-1;for(let i=b.length-22;i>=Math.max(0,b.length-65558);i--){if(b.readUInt32LE(i)===0x06054b50){eocd=i;break;}}if(eocd<0)return "";const count=b.readUInt16LE(eocd+10),start=b.readUInt32LE(eocd+16);let p=start,xml="";for(let i=0;i<count;i++){if(b.readUInt32LE(p)!==0x02014b50)break;const method=b.readUInt16LE(p+10),size=b.readUInt32LE(p+20),nameLen=b.readUInt16LE(p+28),extra=b.readUInt16LE(p+30),comment=b.readUInt16LE(p+32),local=b.readUInt32LE(p+42),name=b.toString("utf8",p+46,p+46+nameLen);if(name==="word/document.xml"){const n=b.readUInt16LE(local+26),x=b.readUInt16LE(local+28),offset=local+30+n+x,chunk=b.subarray(offset,offset+size);xml=(method===8?inflateRawSync(chunk):chunk).toString("utf8");break;}p+=46+nameLen+extra+comment;}return xml.replace(/<w:tab\b[^>]*\/>/g," ").replace(/<\/w:p>/g,"\n").replace(/<[^>]+>/g," ").replace(/&amp;/g,"&").replace(/&lt;/g,"<").replace(/&gt;/g,">").replace(/&quot;/g,'"').replace(/&apos;/g,"'").replace(/\s+/g," ").trim();}
+export async function retrieveMedicalContext(question:string):Promise<{context:string;sources:MedicalSource[];images:MedicalImage[];status:"found"|"empty"|"unavailable"}>{const key=process.env.YANDEX_DISK_PUBLIC_URL;if(!key)return{context:"",sources:[],images:[],status:"unavailable"};try{const files=await list(key);const terms=termsFor(question);const docs=files.filter(f=>/\.(pdf|docx)$/i.test(f.name||"")&&f.path&&(f.size||0)<22*1024*1024).map(file=>({file,priority:/robbins.*cotran|cotran.*robbins/i.test(file.name||"")?100:0,match:score(file.name||"",terms)})).sort((a,b)=>b.priority+b.match-(a.priority+a.match)).slice(0,5);const chunks:string[]=[],sources:MedicalSource[]=[];for(const {file} of docs){try{const bytes=await download(key,file.path!);const isPdf=/\.pdf$/i.test(file.name||"");const pages=isPdf?extractPdf(bytes):[{page:0,text:extractDocx(bytes)}];const matches=pages.map(p=>({...p,relevance:score(p.text,terms)})).filter(p=>p.relevance>0).sort((a,b)=>b.relevance-a.relevance).slice(0,4);if(!matches.length)continue;matches.sort((a,b)=>a.page-b.page);sources.push({title:file.name||"Medical source",pages:matches.filter(p=>p.page>0).map(p=>p.page),excerpt:matches.map(p=>p.text.slice(0,1300)).join("\n").slice(0,1800)});chunks.push("SOURCE: "+file.name+"\n"+matches.map(p=>(p.page>0?"PAGE "+p.page+": ":"")+p.text.slice(0,1800)).join("\n\n"));}catch(e){console.error("Library document skipped",file.name,e);}}
+const images:MedicalImage[]=[];const imageFiles=files.filter(f=>/\.(png|jpe?g|webp)$/i.test(f.name||"")&&f.path&&(f.size||0)<4*1024*1024).map(file=>({file,match:score(file.name||"",terms)})).filter(x=>x.match>0).sort((a,b)=>b.match-a.match).slice(0,3);for(const {file} of imageFiles){try{const bytes=await download(key,file.path!,4*1024*1024);const mime=/\.png$/i.test(file.name!)?"image/png":/\.webp$/i.test(file.name!)?"image/webp":"image/jpeg";images.push({title:file.name||"Medical diagram",dataUrl:"data:"+mime+";base64,"+Buffer.from(bytes).toString("base64"),source:file.name||"Yandex Disk"});}catch(e){console.error("Library image skipped",file.name,e);}}
+return{context:chunks.join("\n\n---\n\n").slice(0,14000),sources,images,status:chunks.length||images.length?"found":"empty"};}catch(e){console.error("Medical library retrieval failed",e);return{context:"",sources:[],images:[],status:"unavailable"};}}
