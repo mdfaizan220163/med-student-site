@@ -7,14 +7,14 @@ const sections = [
 ];
 function SocialLinks() {
   return <nav className="hero-socials" aria-label="Social media">
-    <a href="https://instagram.com/flar.orc.067" target="_blank" rel="noreferrer" aria-label="Instagram" title="Instagram">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M7.8 2h8.4A5.8 5.8 0 0 1 22 7.8v8.4a5.8 5.8 0 0 1-5.8 5.8H7.8A5.8 5.8 0 0 1 2 16.2V7.8A5.8 5.8 0 0 1 7.8 2Zm0 2A3.8 3.8 0 0 0 4 7.8v8.4A3.8 3.8 0 0 0 7.8 20h8.4a3.8 3.8 0 0 0 3.8-3.8V7.8A3.8 3.8 0 0 0 16.2 4H7.8Zm4.2 3a5 5 0 1 1 0 10 5 5 0 0 1 0-10Zm0 2a3 3 0 1 0 0 6 3 3 0 0 0 0-6Zm5.2-3.5a1.2 1.2 0 1 1 0 2.4 1.2 1.2 0 0 1 0-2.4Z"/></svg>
+    <a className="social-instagram" href="https://instagram.com/flar.orc.067" target="_blank" rel="noreferrer" aria-label="Instagram" title="Instagram">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="6" fill="none" stroke="currentColor" strokeWidth="2"/><circle cx="12" cy="12" r="4.5" fill="none" stroke="currentColor" strokeWidth="2"/><circle cx="18" cy="6.5" r="1.3" fill="currentColor"/></svg>
     </a>
-    <a href="https://linkedin.com/in/faizan-md-b285442a8" target="_blank" rel="noreferrer" aria-label="LinkedIn" title="LinkedIn">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M19 3H5a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h14a2 2 0 0 0 2-2V5a2 2 0 0 0-2-2ZM8.34 18H5.67V9.4h2.67V18ZM7 8.23a1.55 1.55 0 1 1 0-3.1 1.55 1.55 0 0 1 0 3.1ZM18.34 18h-2.67v-4.18c0-1-.02-2.29-1.4-2.29-1.4 0-1.62 1.1-1.62 2.22V18H9.98V9.4h2.56v1.17h.04a2.8 2.8 0 0 1 2.52-1.39c2.7 0 3.2 1.78 3.2 4.1V18Z"/></svg>
+    <a className="social-linkedin" href="https://linkedin.com/in/faizan-md-b285442a8" target="_blank" rel="noreferrer" aria-label="LinkedIn" title="LinkedIn">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="2" y="2" width="20" height="20" rx="3" fill="currentColor"/><path fill="#fff" d="M7.2 9.4h2.7v8.2H7.2V9.4Zm1.35-1.1a1.55 1.55 0 1 1 0-3.1 1.55 1.55 0 0 1 0 3.1ZM11 9.4h2.6v1.1h.04a2.85 2.85 0 0 1 2.55-1.4c2.72 0 3.22 1.79 3.22 4.12v4.38h-2.7v-3.88c0-.93-.02-2.12-1.3-2.12-1.3 0-1.5 1.01-1.5 2.05v3.95H11V9.4Z"/></svg>
     </a>
-    <a href="https://youtube.com/@medicosfaizan" target="_blank" rel="noreferrer" aria-label="YouTube" title="YouTube">
-      <svg viewBox="0 0 24 24" aria-hidden="true"><path fill="currentColor" d="M23.5 6.2a3 3 0 0 0-2.1-2.1C19.5 3.6 12 3.6 12 3.6s-7.5 0-9.4.5A3 3 0 0 0 .5 6.2 31 31 0 0 0 0 12a31 31 0 0 0 .5 5.8 3 3 0 0 0 2.1 2.1c1.9.5 9.4.5 9.4.5s7.5 0 9.4-.5a3 3 0 0 0 2.1-2.1A31 31 0 0 0 24 12a31 31 0 0 0-.5-5.8ZM9.6 15.6V8.4l6.3 3.6-6.3 3.6Z"/></svg>
+    <a className="social-youtube" href="https://youtube.com/@medicosfaizan" target="_blank" rel="noreferrer" aria-label="YouTube" title="YouTube">
+      <svg viewBox="0 0 24 24" aria-hidden="true"><rect x="1.5" y="4" width="21" height="16" rx="5" fill="currentColor"/><path d="m10 8.5 6 3.5-6 3.5v-7Z" fill="#fff"/></svg>
     </a>
   </nav>;
 }
