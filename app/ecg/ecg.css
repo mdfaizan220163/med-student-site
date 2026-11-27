@@ -40,3 +40,15 @@
 .ecg-heart-3d-legend i.blue{background:#65c6ef}.ecg-heart-3d-legend i.red{background:#f07878}.ecg-heart-3d-legend i.gold{background:#ffe78a}
 .ecg-stage-marker{fill:#ffe78a;stroke:#fff;stroke-width:2;filter:drop-shadow(0 0 7px #ffcf82);transition:cx .35s ease,cy .35s ease}
 @media(max-width:760px){.ecg-heart-3d-wrap{height:310px}}
+
+/* Actual GLB anatomical heart viewer */
+.ecg-anatomical-model{width:100%;height:430px;position:relative;display:flex;align-items:center;justify-content:center;overflow:hidden}
+.ecg-anatomical-viewer{position:absolute;inset:30px 0 42px;display:block}
+.ecg-anatomical-viewer model-viewer{width:100%;height:100%;background:transparent;--poster-color:transparent}
+.ecg-model-badge{position:absolute;top:15px;left:16px;right:16px;color:#b9d5e9;font-size:8px;font-weight:850;letter-spacing:.11em;pointer-events:none}
+.ecg-model-stage-card{position:absolute;top:42px;right:15px;width:min(190px,42%);padding:11px 12px;border:1px solid #496984;border-radius:8px;background:#0b1d32dc;backdrop-filter:blur(8px);pointer-events:none}
+.ecg-model-stage-card span{display:block;color:#9fc4e0;font-size:7px;font-weight:850;letter-spacing:.1em}
+.ecg-model-stage-card strong{display:block;color:#ffcf82;font-size:12px;margin-top:6px}
+.ecg-model-stage-card p{color:#d1dfeb;font-size:8px;line-height:1.55;margin:5px 0 0}
+.ecg-anatomical-model .ecg-heart-3d-legend{z-index:2;bottom:12px}
+@media(max-width:760px){.ecg-anatomical-model{height:370px}.ecg-anatomical-viewer{inset:34px 0 48px}.ecg-model-stage-card{top:43px;right:8px;width:145px}.ecg-model-badge{font-size:7px}}
