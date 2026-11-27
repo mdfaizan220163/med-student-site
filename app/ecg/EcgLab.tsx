@@ -86,12 +86,12 @@ function Heart3DVisual({ stage }: { stage: number }) {
     { name: "Ventricular recovery", note: "Ventricular cells repolarize; the ECG shows the T wave." },
   ];
   const ModelViewer = "model-viewer" as any;
-  const activePath = stage === 0 ? "M 72 22" : stage === 1 ? "M 72 22 Q 56 32 49 47" : stage === 2 ? "M 72 22 Q 56 32 49 47 L 50 58" : stage === 3 ? "M 72 22 Q 56 32 49 47 L 50 58 L 50 69 L 32 88 M 50 69 L 68 88" : "M 72 22 Q 56 32 49 47 L 50 58 L 50 69 L 32 88 M 50 69 L 68 88";
+  const activePath = stage === 0 ? "M 50 18" : stage === 1 ? "M 50 18 Q 43 26 44 38" : stage === 2 ? "M 50 18 Q 43 26 44 38 L 50 48" : stage === 3 ? "M 50 18 Q 43 26 44 38 L 50 48 L 50 62 Q 42 73 35 82 M 50 62 Q 58 73 65 82" : "M 50 18 Q 43 26 44 38 L 50 48 L 50 62 Q 42 73 35 82 M 50 62 Q 58 73 65 82";
   return <div className="ecg-anatomical-model">
     <Script src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js" type="module" strategy="afterInteractive" onReady={() => setViewerReady(true)} onError={() => setViewerFailed(true)} />
     <div className="ecg-model-visual">
       <div className="ecg-anatomical-viewer">
-        {viewerReady ? <ModelViewer key={viewKey} src="/models/anatomical-human-heart.glb" alt="Three-dimensional anatomical human heart model" camera-controls auto-rotate rotation-per-second="8deg" shadow-intensity="1" exposure="1.15" camera-orbit="0deg 75deg 2.6m" interaction-prompt="auto" reveal="auto" /> : <div className="ecg-model-loading" role="status">{viewerFailed ? "3D viewer could not load. Check your internet connection and reload this page." : "Loading anatomical 3D heart…"} </div>}
+        {viewerReady ? <ModelViewer key={viewKey} src="/models/anatomical-human-heart.glb" alt="Three-dimensional anatomical human heart model"  shadow-intensity="1" exposure="1.15" camera-orbit="0deg 75deg 2.6m" interaction-prompt="auto" reveal="auto" /> : <div className="ecg-model-loading" role="status">{viewerFailed ? "3D viewer could not load. Check your internet connection and reload this page." : "Loading anatomical 3D heart…"} </div>}
       </div>
       <svg className={`ecg-impulse-overlay stage-${stage}`} viewBox="0 0 100 100" aria-label="Schematic electrical conduction pathway overlay" role="img">
         <path className="ecg-impulse-route" d="M 50 18 Q 43 26 44 38 L 50 48 L 50 62 Q 42 73 35 82 M 50 62 Q 58 73 65 82" />
