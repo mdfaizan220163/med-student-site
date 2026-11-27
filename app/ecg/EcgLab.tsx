@@ -4,9 +4,9 @@ import { useEffect, useRef, useState } from "react";
 import Script from "next/script";
 
 const questions = [
-  { q: "Which ECG wave represents atrial depolarization?", options: ["P wave", "QRS complex", "T wave"], answer: 0, explain: "The P wave represents electrical activation (depolarization) of the atria." },
-  { q: "What does the QRS complex represent?", options: ["Atrial repolarization only", "Ventricular depolarization", "Ventricular repolarization"], answer: 1, explain: "The QRS complex represents ventricular depolarization. Atrial repolarization is usually hidden within it." },
-  { q: "At standard paper speed, one small horizontal square equals:", options: ["0.20 seconds", "0.10 seconds", "0.04 seconds"], answer: 2, explain: "At 25 mm/s, a 1 mm small square represents 0.04 seconds." },
+  { q: "Which ECG feature should be checked first in the rhythm assessment?", options: ["R–R interval regularity", "T-wave amplitude", "QT interval only"], answer: 0, explain: "The ECG Interpretation notes begin by comparing successive R–R intervals." },
+  { q: "At 50 mm/s, one 1 mm horizontal square represents:", options: ["0.04 s", "0.02 s", "0.10 s"], answer: 1, explain: "The ECG Interpretation document states 1 mm = 0.02 s at 50 mm/s." },
+  { q: "Which lead is described as usually positive for the P wave in sinus rhythm?", options: ["Lead II", "aVR", "V1 only"], answer: 0, explain: "The ECG Interpretation document lists a positive P wave in lead II and negative P wave in aVR as sinus-rhythm criteria." },
 ];
 
 function Waveform({ paused, stage = 0 }: { paused: boolean; stage?: number }) {
@@ -24,21 +24,21 @@ function Waveform({ paused, stage = 0 }: { paused: boolean; stage?: number }) {
 
 
 const axisStops = [
-  { angle: 0, title: "Horizontal reference", info: "At 0°, the mean QRS vector points toward lead I. Check lead I and aVF together when assessing the frontal QRS axis." },
-  { angle: 60, title: "Normal axis example", info: "Around +60° is a common normal adult QRS axis. The exact normal range depends on the reference used." },
-  { angle: 90, title: "Vertical axis example", info: "At +90°, the vector points inferiorly toward aVF. This may be a normal variant, depending on the patient and clinical context." },
-  { angle: 120, title: "Right axis deviation example", info: "A positive axis beyond about +90° is commonly described as right axis deviation in adults. Interpret it with the ECG and clinical context." },
-  { angle: 180, title: "Extreme axis example", info: "At ±180°, the vector points leftward. An axis in the −90° to ±180° quadrant is often called an extreme or northwest axis." },
-  { angle: -90, title: "Left axis deviation boundary", info: "At −90° is the boundary commonly used for left axis deviation. Values from about −30° to −90° are often classified as left axis deviation." },
-  { angle: -30, title: "Leftward normal boundary", info: "Around −30° is near the lower boundary of the commonly used normal adult axis range. Reference ranges can vary." },
+  { angle: 0, title: "Horizontal axis boundary", info: "The ECG Interpretation notes describe the horizontal axis from 0° to +30°." },
+  { angle: 60, title: "Normal axis", info: "The ECG Interpretation notes give the normal electrical axis as α = +30° to +70°. Vasilenko describes the normal-axis pattern with the largest R wave in lead II." },
+  { angle: 90, title: "Vertical axis", info: "The ECG Interpretation notes give the vertical axis as +70° to +90°. Vasilenko explains that a low diaphragm position may be associated with a more vertical axis and a higher R wave in lead III." },
+  { angle: 120, title: "Right axis deviation", info: "The ECG Interpretation notes define rightward deviation as +90° to ±180°. Its listed limb-lead pattern includes RIII > RII > RI." },
+  { angle: 180, title: "Rightward axis range", info: "This lies within the rightward-deviation range described in the ECG Interpretation document (+90° to ±180°)." },
+  { angle: -90, title: "Left axis deviation boundary", info: "The ECG Interpretation notes describe leftward deviation from 0° to −90°." },
+  { angle: -30, title: "Leftward axis example", info: "The ECG Interpretation notes classify 0° to −90° as leftward deviation; interpretation should follow the limb-lead QRS pattern described in the document." },
 ];
 
 const conductionStages = [
-  { title: "SA node fires", wave: "P wave begins", detail: "The impulse starts in the sinoatrial node and spreads through both atria.", region: "SA node" },
-  { title: "Atrial depolarization", wave: "P wave", detail: "Atrial myocardium depolarizes as the impulse travels toward the AV node.", region: "Atria" },
-  { title: "AV nodal delay", wave: "PR segment", detail: "Conduction slows physiologically through the AV node before entering the His–Purkinje system.", region: "AV node" },
-  { title: "Ventricular depolarization", wave: "QRS complex", detail: "The His bundle, bundle branches and Purkinje network rapidly activate the ventricles.", region: "Ventricles" },
-  { title: "Ventricular repolarization", wave: "T wave", detail: "Ventricular cells recover electrically; this is represented by the T wave.", region: "Ventricles" },
+  { title: "SA node fires", wave: "P wave begins", detail: "The source notes describe sinus rhythm by the P wave preceding the QRS complex; the uploaded ECG interpretation document does not detail the full anatomical origin here.", region: "SA node" },
+  { title: "Atrial depolarization", wave: "P wave", detail: "Vasilenko describes the P wave as atrial excitation; the ECG Interpretation notes assess its shape, polarity, amplitude and duration.", region: "Atria" },
+  { title: "AV conduction interval", wave: "P–Q (PR) interval", detail: "The ECG Interpretation notes give the P–Q interval as 0.12–0.20 s and state that it reflects conduction through the atria, AV junction and His system.", region: "AV junction" },
+  { title: "Ventricular depolarization", wave: "QRS complex", detail: "Vasilenko describes the QRS complex as ventricular excitation and gives a usual duration of 0.06–0.10 s.", region: "Ventricles" },
+  { title: "Ventricular repolarization", wave: "T wave", detail: "Both uploaded sources describe the T wave as ventricular myocardial recovery / repolarization.", region: "Ventricles" },
 ];
 
 function HeartConductionVisual({ stage }: { stage: number }) {
@@ -95,11 +95,13 @@ function Heart3DVisual({ stage }: { stage: number }) {
   const ModelViewer = "model-viewer" as any;
   const route = "M 50 18 Q 43 26 44 38 L 50 48 L 50 62 Q 42 73 35 82 M 50 62 Q 58 73 65 82";
   return <div className="ecg-anatomical-model">
+    <link rel="preconnect" href="https://ajax.googleapis.com" />
+    <link rel="preload" href="/models/anatomical-human-heart.glb" as="fetch" crossOrigin="anonymous" />
     <Script src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js" type="module" strategy="afterInteractive" onReady={() => setViewerReady(true)} onError={() => setViewerFailed(true)} />
     <div className="ecg-model-visual">
       <div className="ecg-anatomical-viewer">
         <div className="ecg-heartbeat">
-          {viewerReady ? <ModelViewer src="/models/anatomical-human-heart.glb" alt="Three-dimensional anatomical human heart model" shadow-intensity="1" exposure="1.15" camera-orbit="0deg 75deg 2.6m" camera-controls={false} auto-rotate={false} interaction-prompt="none" reveal="auto" /> : <div className="ecg-model-loading" role="status">{viewerFailed ? "3D heart could not load. Check the model file and internet connection." : "Loading anatomical 3D heart…"}</div>}
+          {viewerReady ? <ModelViewer src="/models/anatomical-human-heart.glb" alt="Three-dimensional anatomical human heart model" shadow-intensity="1" exposure="1.15" camera-orbit="0deg 75deg 2.6m" camera-controls={false} auto-rotate={false} interaction-prompt="none" loading="eager" reveal="auto" /> : <div className="ecg-model-loading" role="status">{viewerFailed ? "3D heart could not load. Check the model file and internet connection." : "Loading anatomical 3D heart…"}</div>}
         </div>
       </div>
       <svg className={`ecg-impulse-overlay stage-${stage}`} viewBox="0 0 100 100" aria-label="Animated schematic electrical conduction pathway" role="img">
@@ -174,9 +176,9 @@ export default function EcgLab() {
     <section className="ecg-container ecg-section" id="ecg-explorer">
       <div className="ecg-section-heading"><div><p className="ecg-overline">01 / THE BASICS</p><h2>What is an ECG?</h2></div><p>An electrocardiogram records voltage changes produced by cardiac electrical activity using electrodes placed on the skin.</p></div>
       <div className="ecg-fact-grid">
-        <article><b>Electrical activity</b><p>Depolarization and repolarization create the electrical signals detected at the body surface.</p></article>
-        <article><b>Non-invasive test</b><p>Skin electrodes detect signals; they do not send electricity into the heart.</p></article>
-        <article><b>A clinical snapshot</b><p>A standard 12-lead ECG records multiple views of cardiac activity over a short period.</p></article>
+        <article><b>Check the recording</b><p>Record patient details, examination date and time, clinical diagnosis, factors affecting the tracing, paper speed and calibration.</p></article>
+        <article><b>Check signal quality</b><p>Inspect the control millivolt, artifacts, electrode contact and whether at least four cardiac cycles are present in each lead.</p></article>
+        <article><b>Analyse systematically</b><p>Review rhythm, rhythm source, heart rate, conduction, electrical axis, waves, intervals, complexes and the final ECG report.</p></article>
       </div>
     </section>
 
@@ -189,12 +191,12 @@ export default function EcgLab() {
         <div className="ecg-explorer-body">
           <div className="ecg-mini-strip"><Waveform paused={paused} stage={conductionStep} /></div>
           {active === "waves" && <div className="ecg-explain-grid">
-            <article><span className="ecg-wave-letter">P</span><div><h3>P wave</h3><p>Atrial depolarization — electrical activation spreads through the atria.</p></div></article>
-            <article><span className="ecg-wave-letter">QRS</span><div><h3>QRS complex</h3><p>Ventricular depolarization. Atrial repolarization occurs at about the same time and is usually obscured.</p></div></article>
-            <article><span className="ecg-wave-letter">T</span><div><h3>T wave</h3><p>Ventricular repolarization — the ventricles recover electrically.</p></div></article>
+            <article><span className="ecg-wave-letter">P</span><div><h3>P wave</h3><p>Both sources describe the P wave as atrial excitation / depolarization. The ECG Interpretation notes give duration up to 0.10 s and amplitude up to 2.5 mm; in sinus rhythm it is positive in lead II and negative in aVR.</p></div></article>
+            <article><span className="ecg-wave-letter">QRS</span><div><h3>QRS complex</h3><p>Ventricular excitation. The Q wave corresponds to septal excitation; R is the principal positive wave; S is the negative wave recorded during completion of ventricular excitation. The ECG Interpretation notes flag Q greater than ¼ of R and wider than 0.03 s as pathological.</p></div></article>
+            <article><span className="ecg-wave-letter">T</span><div><h3>T wave</h3><p>Ventricular myocardial repolarization. Vasilenko describes a normally asymmetrical contour with a gradual ascent and a steeper descent; assess polarity, amplitude and shape.</p></div></article>
           </div>}
-          {active === "intervals" && <div className="ecg-detail-list"><article><b>PR interval · 0.12–0.20 s</b><p>From the start of the P wave to the start of the QRS complex; reflects atrial-to-ventricular conduction time.</p></article><article><b>QRS duration · usually 0.06–0.10 s</b><p>Time taken for ventricular depolarization. A QRS of 0.12 s or more is generally considered prolonged.</p></article><article><b>QT interval</b><p>From the start of QRS to the end of T; represents ventricular depolarization and repolarization. Interpret QT after correcting for heart rate (QTc).</p></article></div>}
-          {active === "segments" && <div className="ecg-detail-list"><article><b>PR segment</b><p>From the end of P to the start of QRS; normally near the isoelectric baseline.</p></article><article><b>ST segment</b><p>From the end of QRS (J point) to the start of T; normally near the baseline. Elevation or depression may have clinical significance in context.</p></article><article><b>TP segment</b><p>From the end of T to the next P wave; often used as the isoelectric reference baseline.</p></article></div>}
+          {active === "intervals" && <div className="ecg-detail-list"><article><b>P wave · up to 0.10 s</b><p>Reflects atrial excitation. The ECG Interpretation notes list amplitude up to 2.5 mm; Vasilenko describes changes with atrial enlargement.</p></article><article><b>P–Q (PR) interval · 0.12–0.20 s</b><p>The ECG Interpretation notes describe the overall conduction time through the atria, AV junction and His system.</p></article><article><b>QRS complex · 0.06–0.10 s</b><p>Corresponds to ventricular excitation / intraventricular conduction, according to both uploaded sources.</p></article><article><b>Q–T interval</b><p>Extends from the beginning of Q (or R if Q is absent) to the end of T. Both sources note that its duration depends on heart rate.</p></article></div>}
+          {active === "segments" && <div className="ecg-detail-list"><article><b>ST (RS–T) segment</b><p>The ECG Interpretation notes instruct checking its position relative to the isoelectric line and measuring J-point deviation when displaced.</p></article><article><b>T wave</b><p>Represents ventricular repolarization. Assess polarity, amplitude and shape; Vasilenko describes the normal wave as asymmetrical.</p></article><article><b>T–P interval</b><p>Vasilenko describes this interval, from the end of T to the beginning of the next P, as the electrical diastole of the heart.</p></article></div>}
         </div>
       </div>
     </div></section>
@@ -202,21 +204,21 @@ export default function EcgLab() {
     <section className="ecg-container ecg-section">
       <div className="ecg-section-heading"><div><p className="ecg-overline">03 / PAPER & CALIBRATION</p><h2>Read the grid.</h2></div><p>ECG paper converts time and voltage into measurable horizontal and vertical distances.</p></div>
       <div className="ecg-measure-grid">
-        <div className="ecg-grid-visual"><div className="ecg-grid-square"><span>1 small square</span><strong>0.04 s</strong></div><div className="ecg-grid-square large"><span>1 large square</span><strong>0.20 s</strong></div><small>Standard calibration: 25 mm/s · 10 mm = 1 mV</small></div>
-        <div className="ecg-measure-facts"><article><strong>0.04 s</strong><span>One small horizontal square (1 mm)</span></article><article><strong>0.20 s</strong><span>One large horizontal square (5 mm)</span></article><article><strong>1 mV</strong><span>10 mm vertical deflection at standard gain</span></article><article><strong>25 mm/s</strong><span>Standard paper speed in most routine ECGs</span></article></div>
+        <div className="ecg-grid-visual"><div className="ecg-grid-square"><span>1 mm at 25 mm/s</span><strong>0.04 s</strong></div><div className="ecg-grid-square large"><span>1 mm at 50 mm/s</span><strong>0.02 s</strong></div><small>Control millivolt: 10 mm. At 25 mm/s, 5 mm = 0.20 s; at 50 mm/s, 5 mm = 0.10 s.</small></div>
+        <div className="ecg-measure-facts"><article><strong>0.04 s</strong><span>1 mm horizontal at 25 mm/s</span></article><article><strong>0.02 s</strong><span>1 mm horizontal at 50 mm/s</span></article><article><strong>10 mm</strong><span>Control millivolt amplitude to check before analysis</span></article><article><strong>4 cycles</strong><span>Minimum cardiac cycles per lead stated in the ECG Interpretation notes</span></article></div>
       </div>
-      <div className="ecg-note"><b>Remember:</b> If paper speed or gain is changed, the usual square measurements must be adjusted accordingly.</div>
+      <div className="ecg-note"><b>Heart-rate calculation from the uploaded ECG Interpretation notes:</b> At 50 mm/s, HR = 60 ÷ R–R duration in seconds (1 mm = 0.02 s). At 25 mm/s, for a regular rhythm, HR = 300 ÷ number of large squares between R waves (or 1500 ÷ small squares). For an irregular rhythm, the notes advise estimating minimum and maximum rates from the longest and shortest R–R intervals.</div>
     </section>
 
     <section className="ecg-blue-section"><div className="ecg-container ecg-section">
       <div className="ecg-section-heading light"><div><p className="ecg-overline">04 / THE 12-LEAD ECG</p><h2>Twelve views. One heart.</h2></div><p>A standard 12-lead ECG uses 10 physical electrodes to create 12 leads — six limb leads and six chest leads.</p></div>
       <div className="ecg-lead-grid"><article><span>I · II · III</span><h3>Standard limb leads</h3><p>Three bipolar views of the electrical potential between limb electrodes.</p></article><article><span>aVR · aVL · aVF</span><h3>Augmented limb leads</h3><p>Three unipolar views looking at the heart in the frontal plane.</p></article><article><span>V1–V6</span><h3>Precordial leads</h3><p>Six chest views that examine electrical activity in the horizontal plane.</p></article></div>
-      <p className="ecg-placement-note">Chest electrode landmarks: V1 — 4th intercostal space, right sternal border; V2 — 4th intercostal space, left sternal border; V4 — 5th intercostal space, midclavicular line; V3 — midway between V2 and V4; V5 — anterior axillary line, level with V4; V6 — midaxillary line, level with V4.</p>
+      <p className="ecg-placement-note">The ECG Interpretation notes require amplitude, shape and polarity to be assessed across all 12 leads. They identify lead II as a usual lead for measuring P and P–Q intervals, and V1–V2 / V6 for assessing selected ventricular conduction measures. The uploaded pages do not provide chest-electrode placement landmarks.</p>
     </div></section>
 
     <section className="ecg-container ecg-section">
       <div className="ecg-section-heading"><div><p className="ecg-overline">05 / FIRST INTERPRETATION</p><h2>A systematic approach.</h2></div><p>Use the same sequence each time so that important findings are less likely to be missed.</p></div>
-      <ol className="ecg-checklist">{["Check patient details and ECG calibration","Calculate the heart rate","Assess rhythm and regularity","Determine the cardiac axis","Inspect P waves and PR interval","Measure QRS duration and morphology","Assess ST segments and T waves","Measure QT and consider QTc","Compare with previous ECGs and clinical context"].map((item,i)=><li key={item}><span>{String(i+1).padStart(2,"0")}</span>{item}</li>)}</ol>
+      <ol className="ecg-checklist">{["Check patient details, examination conditions, recording speed and calibration","Check artifacts, electrode contact and number of cardiac cycles","Determine R–R regularity","Identify the rhythm source: sinus or non-sinus","Calculate heart rate","Assess conduction intervals and internal ventricular deflection","Determine the electrical axis and cardiac rotation","Analyse P, QRS, ST–T and QT elements in all leads","Write the ECG conclusion and compare with previous ECGs and clinical data"].map((item,i)=><li key={item}><span>{String(i+1).padStart(2,"0")}</span>{item}</li>)}</ol>
     </section>
 
     <section className="ecg-quiz-section"><div className="ecg-container ecg-section">
@@ -224,6 +226,6 @@ export default function EcgLab() {
       <div className="ecg-quiz"><div className="ecg-quiz-top"><span>QUESTION {question+1} OF {questions.length}</span><span>{answer === null ? "Choose one answer" : answer === current.answer ? "Correct" : "Review the explanation"}</span></div><h3>{current.q}</h3><div className="ecg-options">{current.options.map((option,i)=><button key={option} onClick={()=>setAnswer(i)} className={answer === i ? (i === current.answer ? "correct" : "incorrect") : ""} disabled={answer !== null}>{String.fromCharCode(65+i)} <span>{option}</span></button>)}</div>{answer !== null && <div className="ecg-feedback"><b>{answer === current.answer ? "Well done!" : "Not quite."}</b> {current.explain}<button onClick={()=>{setQuestion((question+1)%questions.length);setAnswer(null)}}>{question === questions.length-1 ? "Start again" : "Next question"} →</button></div>}</div>
     </div></section>
 
-    <section className="ecg-container ecg-bottom"><div><p className="ecg-overline">KEEP LEARNING</p><h2>Build your ECG foundations, one wave at a time.</h2><p>This page is an educational introduction. Real ECG interpretation requires clinical context, supervised practice, and assessment by a qualified clinician.</p></div><a href="#ecg-explorer">Back to the explorer ↑</a></section>
+    <section className="ecg-container ecg-bottom"><div><p className="ecg-overline">SOURCE MATERIAL</p><h2>ECG analysis and interpretation.</h2><p>Content on this page is based on the uploaded “ECG interpretation” notes (12 pages) and Vasilenko, Propedeutics of Internal Diseases, Chapter 6, pp. 238–245. Where a topic is not covered in those pages, it is identified rather than filled in from an outside source. Educational use only; correlate ECG findings with clinical data.</p></div><a href="#ecg-explorer">Back to the explorer ↑</a></section>
   </main>;
 }
