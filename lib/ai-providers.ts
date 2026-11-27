@@ -1,12 +1,12 @@
 export type Provider="deepseek"|"gemini"|"groq"|"claude"|"openai";
-export type Part={type:"text";text:string}|{type:"image_url";image_url:{url:string}};
+export type Part={type:"text";text:string}|{type:"image_url";image_url:{url:string}}|{type:"document";name:string;mime:"application/pdf";data:string};
 export type Message={role:"user"|"assistant";content:string|Part[]};
 export const providerNames:Record<Provider,string>={deepseek:"DeepSeek",gemini:"Gemini",groq:"Groq",claude:"Claude",openai:"ChatGPT"};
 export function availableProviders():Provider[]{const a:Provider[]=[];if(process.env.DEEPSEEK_API_KEY)a.push("deepseek");if(process.env.GEMINI_API_KEY)a.push("gemini");if(process.env.GROQ_API_KEY)a.push("groq");if(process.env.ANTHROPIC_API_KEY)a.push("claude");if(process.env.OPENAI_API_KEY)a.push("openai");return a;}
 export async function askProvider(p:Provider,m:Message[],system:string,maxTokens=1800):Promise<string>{
- const plain=m.map(x=>({role:x.role,content:typeof x.content==="string"?x.content:x.content.map(y=>y.type==="text"?y.text:"").join("\n")}));
+ const plain=m.map(x=>({role:x.role,content:typeof x.content==="string"?x.content:x.content.map(y=>y.type==="text"?y.text:y.type==="document"?`[Attached PDF: ${y.name}]`:"").join("\n")}));
  if(p==="deepseek"){
-  if(m.some(x=>Array.isArray(x.content)&&x.content.some(y=>y.type==="image_url")))throw Error("DeepSeek chat mode cannot process images. Choose Gemini, Claude or ChatGPT for image questions.");
+  if(m.some(x=>Array.isArray(x.content)&&x.content.some(y=>y.type==="image_url"||y.type==="document")))throw Error("DeepSeek chat mode cannot process images. Choose Gemini, Claude or ChatGPT for image questions.");
   const r=await fetch("https://api.deepseek.com/chat/completions",{method:"POST",headers:{"Content-Type":"application/json",Authorization:`Bearer ${process.env.DEEPSEEK_API_KEY}`},body:JSON.stringify({model:process.env.DEEPSEEK_MODEL||"deepseek-chat",messages:[{role:"system",content:system},...plain],temperature:.35,max_tokens:maxTokens}),signal:AbortSignal.timeout(55000)});
   const d=await r.json();if(!r.ok)throw Error(d?.error?.message||"DeepSeek failed");return d?.choices?.[0]?.message?.content?.trim()||"";
  }
