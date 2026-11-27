@@ -113,6 +113,7 @@ export default function EcgLab() {
   const [axisAngle, setAxisAngle] = useState(60);
   const [simulationRunning, setSimulationRunning] = useState(true);
   useEffect(() => { if (!simulationRunning) return; const timer = window.setInterval(() => setConductionStep(step => (step + 1) % conductionStages.length), 1800); return () => window.clearInterval(timer); }, [simulationRunning]);
+  useEffect(() => { const timer = window.setInterval(() => setAxisAngle(angle => angle >= 180 ? -180 : angle + 5), 110); return () => window.clearInterval(timer); }, []);
   const axisLabel = axisAngle >= 30 && axisAngle <= 70 ? "Normal axis (PDF: +30° to +70°)" : axisAngle >= 0 && axisAngle < 30 ? "Horizontal axis (0° to +30°)" : axisAngle > 70 && axisAngle <= 90 ? "Vertical axis (+70° to +90°)" : axisAngle < 0 ? "Left axis deviation (0° to −90°)" : "Right axis deviation (+90° to +180°)";
   const current = questions[question];
 
@@ -146,9 +147,9 @@ export default function EcgLab() {
           </div>
         </div>
         <div className="ecg-axis-lab">
-          <div><p className="ecg-overline">LIVE MODEL / 02</p><h3>Rotate the mean QRS axis.</h3><p>Move the angle to explore the frontal-plane hexaxial reference system. This is a teaching model; real axis interpretation uses measured limb-lead QRS deflections.</p><label className="ecg-axis-slider">Axis angle <strong>{axisAngle}°</strong><input type="range" min="-180" max="180" step="5" value={axisAngle} onChange={e=>setAxisAngle(Number(e.target.value))}/><span><small>−180°</small><small>0°</small><small>+180°</small></span></label><div className="ecg-axis-status">{axisLabel}</div></div>
+          <div><p className="ecg-overline">LIVE MODEL / 02</p><h3>Watch the mean QRS axis sweep.</h3><p>The mean QRS vector moves automatically through the frontal-plane hexaxial reference system. This is an animated teaching sweep, not a real-time change in a patient's cardiac axis; clinical axis is calculated from measured limb-lead QRS deflections.</p><div className="ecg-axis-status">AUTOMATIC DEMONSTRATION · {axisAngle}° · {axisLabel}</div></div>
           <div className="ecg-axis-visual-wrap"><AxisVisual angle={axisAngle}/></div>
-        </div>
+        </div>        </div>
       </div>
     </section>
 
