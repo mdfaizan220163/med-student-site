@@ -101,7 +101,7 @@ function Heart3DVisual({ stage }: { stage: number }) {
     <div className="ecg-model-visual">
       <div className="ecg-anatomical-viewer">
         <div className="ecg-heartbeat">
-          {viewerReady ? <ModelViewer src="/models/anatomical-human-heart.glb" alt="Three-dimensional anatomical human heart model" shadow-intensity="1" exposure="1.15" camera-orbit="0deg 75deg 2.6m" camera-controls={false} auto-rotate={false} interaction-prompt="none" loading="eager" reveal="auto" /> : <div className="ecg-model-loading" role="status">{viewerFailed ? "3D heart could not load. Check the model file and internet connection." : "Loading anatomical 3D heart…"}</div>}
+          {viewerReady ? <ModelViewer src="/models/anatomical-human-heart.glb" alt="Three-dimensional anatomical human heart model" shadow-intensity="1" exposure="1.15" camera-orbit="0deg 75deg 3.6m" field-of-view="30deg" camera-target="auto auto auto" camera-controls={false} auto-rotate={false} interaction-prompt="none" loading="eager" reveal="auto" /> : <div className="ecg-model-loading" role="status">{viewerFailed ? "3D heart could not load. Check the model file and internet connection." : "Loading anatomical 3D heart…"}</div>}
         </div>
       </div>
       <svg className={`ecg-impulse-overlay stage-${stage}`} viewBox="0 0 100 100" aria-label="Animated schematic electrical conduction pathway" role="img">
