@@ -55,3 +55,16 @@
 
 .ecg-anatomical-viewer model-viewer{width:100%;height:100%;display:block;background:transparent;--poster-color:transparent}
 .ecg-model-loading{height:100%;display:flex;align-items:center;justify-content:center;color:#c5d8e8;font-size:12px;text-align:center;padding:24px}
+
+/* Editorial, hand-annotated lab controls */
+.ecg-model-tools{position:relative;z-index:5;display:flex;flex-wrap:wrap;gap:8px;padding:10px 12px;border-top:1px solid rgba(255,255,255,.12);background:rgba(9,24,39,.72)}
+.ecg-model-tools button{appearance:none;border:1px solid rgba(229,219,190,.38);border-radius:3px;background:rgba(245,239,222,.07);color:#f1ead7;padding:8px 11px;font:600 12px/1.2 inherit;letter-spacing:.015em;cursor:pointer;transition:background .18s ease,border-color .18s ease,transform .18s ease}
+.ecg-model-tools button:hover{background:rgba(245,239,222,.16);border-color:#d8c99e;transform:translateY(-1px)}
+.ecg-model-tools button:focus-visible{outline:2px solid #e8c879;outline-offset:3px}
+.ecg-impulse-labels.is-hidden{display:none}
+.ecg-impulse-active{stroke-dasharray:3 2;animation:ecg-route-dash 1.15s linear infinite}
+.ecg-impulse-particle{filter:drop-shadow(0 0 5px #ffbd52)}
+.ecg-model-stage-card{backdrop-filter:blur(8px);border-left:2px solid #d5b66d}
+@keyframes ecg-route-dash{to{stroke-dashoffset:-10}}
+@media(prefers-reduced-motion:reduce){.ecg-impulse-active{animation:none}.ecg-model-tools button{transition:none}}
+@media(max-width:520px){.ecg-model-tools{gap:6px;padding:8px}.ecg-model-tools button{font-size:11px;padding:8px}}
