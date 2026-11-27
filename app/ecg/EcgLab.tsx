@@ -93,18 +93,20 @@ function Heart3DVisual({ stage }: { stage: number }) {
     { name: "Ventricular recovery", note: "Ventricular cells repolarize; the ECG shows the T wave." },
   ];
   const ModelViewer = "model-viewer" as any;
-  const activePath = "M 50 18 Q 43 26 44 38 Q 48 43 50 48 L 50 62 Q 42 73 35 82 M 50 62 Q 58 73 65 82";
+  const route = "M 50 18 Q 43 26 44 38 L 50 48 L 50 62 Q 42 73 35 82 M 50 62 Q 58 73 65 82";
   return <div className="ecg-anatomical-model">
     <Script src="https://ajax.googleapis.com/ajax/libs/model-viewer/4.0.0/model-viewer.min.js" type="module" strategy="afterInteractive" onReady={() => setViewerReady(true)} onError={() => setViewerFailed(true)} />
     <div className="ecg-model-visual">
       <div className="ecg-anatomical-viewer">
-        {viewerReady ? <ModelViewer src="/models/anatomical-human-heart.glb" alt="Three-dimensional anatomical human heart model"  shadow-intensity="1" exposure="1.15" camera-orbit="0deg 75deg 2.6m" interaction-prompt="auto" reveal="auto" /> : <div className="ecg-model-loading" role="status">{viewerFailed ? "3D viewer could not load. Check your internet connection and reload this page." : "Loading anatomical 3D heart…"} </div>}
+        <div className="ecg-heartbeat">
+          {viewerReady ? <ModelViewer src="/models/anatomical-human-heart.glb" alt="Three-dimensional anatomical human heart model" shadow-intensity="1" exposure="1.15" camera-orbit="0deg 75deg 2.6m" camera-controls={false} auto-rotate={false} interaction-prompt="none" reveal="auto" /> : <div className="ecg-model-loading" role="status">{viewerFailed ? "3D heart could not load. Check the model file and internet connection." : "Loading anatomical 3D heart…"}</div>}
+        </div>
       </div>
-      <svg className={`ecg-impulse-overlay stage-${stage}`} viewBox="0 0 100 100" aria-label="Schematic electrical conduction pathway overlay" role="img">
-        <path className="ecg-impulse-route" d="M 50 18 Q 43 26 44 38 L 50 48 L 50 62 Q 42 73 35 82 M 50 62 Q 58 73 65 82" />
-        <path className="ecg-impulse-active" d={activePath} />
+      <svg className={`ecg-impulse-overlay stage-${stage}`} viewBox="0 0 100 100" aria-label="Animated schematic electrical conduction pathway" role="img">
+        <path className="ecg-impulse-route" d={route}/>
+        <path className="ecg-impulse-active" d={route}/>
         <g className="ecg-impulse-nodes"><circle cx="50" cy="18" r="2.2"/><circle cx="44" cy="38" r="2"/><circle cx="50" cy="48" r="2"/><circle cx="50" cy="62" r="2"/><circle cx="35" cy="82" r="1.8"/><circle cx="65" cy="82" r="1.8"/></g>
-        <circle className="ecg-impulse-particle" r="2.6"><animateMotion dur="2.8s" repeatCount="indefinite" path={activePath}/></circle>
+        <circle className="ecg-impulse-particle" r="2.8"><animateMotion dur="2.8s" repeatCount="indefinite" path={route}/></circle>
         <g className="ecg-impulse-labels"><text x="54" y="17">SA</text><text x="54" y="49">AV</text><text x="54" y="61">His</text><text x="18" y="86">RBB</text><text x="68" y="86">LBB</text></g>
       </svg>
       <div className="ecg-model-badge">FRONT VIEW · SCHEMATIC ELECTRICAL PATHWAY</div>
