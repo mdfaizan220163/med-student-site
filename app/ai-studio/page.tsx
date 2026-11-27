@@ -3,7 +3,7 @@ import { ChangeEvent, FormEvent, useRef, useState } from "react";
 import Link from "next/link";
 type Message = { role: "user" | "assistant"; content: string; image?: string };
 function renderInline(text:string):React.ReactNode[] {
- const tokens=text.split(/(\\*\\*[^*]+\\*\\*|\\*[^*]+\\*|`[^`]+`)/g);
+ const tokens=text.split(/(\*\*[^*]+\*\*|\*[^*]+\*|`[^`]+`)/g);
  return tokens.map((token,index)=>{
   if(token.startsWith("**")&&token.endsWith("**")) return <strong key={index}>{token.slice(2,-2)}</strong>;
   if(token.startsWith("*")&&token.endsWith("*")) return <em key={index}>{token.slice(1,-1)}</em>;
@@ -12,21 +12,21 @@ function renderInline(text:string):React.ReactNode[] {
  });
 }
 function FormattedAnswer({content}:{content:string}) {
- const lines=content.replace(/\\r/g,"").split("\\n");
+ const lines=content.replace(/\r/g,"").split("\n");
  const out:React.ReactNode[]=[]; let i=0;
  while(i<lines.length){
   const line=lines[i]; if(!line.trim()){i++;continue;}
-  if(line.trim().startsWith("|") && i+1<lines.length && /^\\s*\\|?\\s*:?-{3,}/.test(lines[i+1])) {
-   const parse=(s:string)=>s.trim().replace(/^\\|/,"").replace(/\\|$/,"").split("|").map(v=>v.trim());
+  if(line.trim().startsWith("|") && i+1<lines.length && /^\s*\|?\s*:?-{3,}/.test(lines[i+1])) {
+   const parse=(s:string)=>s.trim().replace(/^\|/,"").replace(/\|$/,"").split("|").map(v=>v.trim());
    const head=parse(line); i+=2; const rows:string[][]=[];
    while(i<lines.length && lines[i].trim().startsWith("|")) rows.push(parse(lines[i++]));
    out.push(<div key={out.length} className="my-4 w-full overflow-x-auto rounded-xl border border-slate-200"><table className="w-full border-collapse text-left text-xs sm:text-sm"><thead className="bg-[#e8f0f7] text-[#173b5e]"><tr>{head.map((cell,n)=><th key={n} className="border-b border-r border-slate-200 px-3 py-2.5 font-bold last:border-r-0">{renderInline(cell)}</th>)}</tr></thead><tbody>{rows.map((row,r)=><tr key={r} className={r%2?"bg-slate-50":"bg-white"}>{head.map((_,c)=><td key={c} className="border-b border-r border-slate-100 px-3 py-2.5 align-top last:border-r-0">{renderInline(row[c]||"")}</td>)}</tr>)}</tbody></table></div>); continue;
   }
-  const heading=line.match(/^(#{1,4})\\s+(.+)$/);
+  const heading=line.match(/^(#{1,4})\s+(.+)$/);
   if(heading){out.push(<h3 key={out.length} className="mb-2 mt-5 text-base font-bold text-[#173b5e]">{renderInline(heading[2])}</h3>);i++;continue;}
-  if(/^\\s*[-*+]\\s+/.test(line)){const items:string[]=[];while(i<lines.length&&/^\\s*[-*+]\\s+/.test(lines[i]))items.push(lines[i++].replace(/^\\s*[-*+]\\s+/,""));out.push(<ul key={out.length} className="my-2 list-disc space-y-1 pl-5">{items.map((v,n)=><li key={n}>{renderInline(v)}</li>)}</ul>);continue;}
-  if(/^\\s*\\d+[.)]\\s+/.test(line)){const items:string[]=[];while(i<lines.length&&/^\\s*\\d+[.)]\\s+/.test(lines[i]))items.push(lines[i++].replace(/^\\s*\\d+[.)]\\s+/,""));out.push(<ol key={out.length} className="my-2 list-decimal space-y-1 pl-5">{items.map((v,n)=><li key={n}>{renderInline(v)}</li>)}</ol>);continue;}
-  const para=[line.trim()];i++;while(i<lines.length&&lines[i].trim()&&!/^(#{1,4})\\s|^\\s*[-*+]\\s|^\\s*\\d+[.)]\\s/.test(lines[i])&&!(lines[i].trim().startsWith("|")&&i+1<lines.length&&/^\\s*\\|?\\s*:?-{3,}/.test(lines[i+1])))para.push(lines[i++].trim());
+  if(/^\s*[-*+]\s+/.test(line)){const items:string[]=[];while(i<lines.length&&/^\s*[-*+]\s+/.test(lines[i]))items.push(lines[i++].replace(/^\s*[-*+]\s+/,""));out.push(<ul key={out.length} className="my-2 list-disc space-y-1 pl-5">{items.map((v,n)=><li key={n}>{renderInline(v)}</li>)}</ul>);continue;}
+  if(/^\s*\d+[.)]\s+/.test(line)){const items:string[]=[];while(i<lines.length&&/^\s*\d+[.)]\s+/.test(lines[i]))items.push(lines[i++].replace(/^\s*\d+[.)]\s+/,""));out.push(<ol key={out.length} className="my-2 list-decimal space-y-1 pl-5">{items.map((v,n)=><li key={n}>{renderInline(v)}</li>)}</ol>);continue;}
+  const para=[line.trim()];i++;while(i<lines.length&&lines[i].trim()&&!/^(#{1,4})\s|^\s*[-*+]\s|^\s*\d+[.)]\s/.test(lines[i])&&!(lines[i].trim().startsWith("|")&&i+1<lines.length&&/^\s*\|?\s*:?-{3,}/.test(lines[i+1])))para.push(lines[i++].trim());
   out.push(<p key={out.length} className="my-2 leading-7">{renderInline(para.join(" "))}</p>);
  }
  return <div className="min-w-0 break-words">{out}</div>;
