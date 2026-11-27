@@ -1,95 +1,102 @@
-/* Blue notebook-paper sections + handwritten study-note typography */
-@import url('https://fonts.googleapis.com/css2?family=Kalam:wght@300;400;700&family=Patrick+Hand&display=swap');
-
+/* Correction: retain the dynamic ECG design; notebook styling belongs only
+   to written study-note blocks, not the waveform, hero, or interactive labs. */
 .ecg-page,
 .ecg-page button,
 .ecg-page input,
 .ecg-page p,
 .ecg-page li,
 .ecg-page span,
-.ecg-page label{
-  font-family:'Kalam','Comic Sans MS',cursive;
+.ecg-page label,
+.ecg-page h1,.ecg-page h2,.ecg-page h3,.ecg-page h4{
+  font-family:inherit;
+  letter-spacing:normal;
 }
-.ecg-page h1,.ecg-page h2,.ecg-page h3,.ecg-page h4,
-.ecg-page .ecg-overline,.ecg-page .ecg-kicker{
-  font-family:'Patrick Hand','Kalam',cursive;
-  letter-spacing:.01em;
-}
-.ecg-hero h1{font-size:clamp(42px,5vw,66px);letter-spacing:0}
-.ecg-section-heading h2{letter-spacing:0}
-.ecg-blue-section,
-.ecg-dark-section,
-.ecg-quiz-section,
-.ecg-conduction-section{
-  color:#183b59;
-  background-color:#dcecf7;
-  background-image:
-    linear-gradient(90deg,transparent 0,transparent 46px,rgba(193,83,91,.38) 46px,rgba(193,83,91,.38) 48px,transparent 48px),
-    repeating-linear-gradient(to bottom,transparent 0,transparent 31px,rgba(66,130,177,.28) 31px,rgba(66,130,177,.28) 32px);
-  border-top:1px solid rgba(71,119,153,.2);
-  border-bottom:1px solid rgba(71,119,153,.2);
-}
-.ecg-dark-section .ecg-section-heading h2,
+.ecg-hero h1{font-size:clamp(40px,5vw,62px);letter-spacing:-.065em}
+.ecg-section-heading h2{letter-spacing:-.055em}
+.ecg-blue-section{background:#163b60;color:#fff}
+.ecg-dark-section,.ecg-quiz-section{background:#0c2038;color:#fff}
+.ecg-conduction-section{background:radial-gradient(circle at 20% 10%,#183e60 0,#0b1d32 56%,#081726 100%);color:#fff}
 .ecg-blue-section .ecg-section-heading h2,
+.ecg-dark-section .ecg-section-heading h2,
 .ecg-quiz-section .ecg-section-heading h2,
-.ecg-conduction-section .ecg-section-heading h2,
-.ecg-dark-section .ecg-section-heading.light h2{color:#183b59}
-.ecg-dark-section .ecg-section-heading>p,
+.ecg-conduction-section .ecg-section-heading h2{color:#fff}
 .ecg-blue-section .ecg-section-heading>p,
+.ecg-dark-section .ecg-section-heading>p,
 .ecg-quiz-section .ecg-section-heading>p,
-.ecg-conduction-section .ecg-section-heading>p,
-.ecg-section-heading.light>p{color:#42627c}
+.ecg-conduction-section .ecg-section-heading>p{color:#c0d0de}
 .ecg-explorer,.ecg-quiz,.ecg-heart-stage,.ecg-stage-panel,.ecg-axis-lab{
-  background:rgba(248,252,255,.82);
-  border:1px solid #9dbbd0;
-  box-shadow:2px 3px 0 rgba(53,91,119,.12);
+  background:linear-gradient(145deg,#102b45,#0b1e33);
+  border:1px solid #294761;
+  box-shadow:0 18px 44px #0003;
 }
-.ecg-tabs{border-bottom-color:#b3c9d8}
-.ecg-tabs button{color:#365d79}
-.ecg-tabs button.selected{background:#b9d8eb;color:#173b59}
-.ecg-explain-grid article,.ecg-detail-list article,
-.ecg-wave-link,.ecg-axis-stop-info,.ecg-axis-status{
-  background:rgba(207,229,243,.88);
-  border-color:#a6c2d5;
-}
-.ecg-explain-grid h3,.ecg-stage-panel h3,.ecg-axis-lab h3,
-.ecg-quiz h3,.ecg-detail-list b{color:#183b59}
-.ecg-explain-grid p,.ecg-detail-list p,.ecg-stage-panel>p,
-.ecg-axis-lab p,.ecg-quiz-top,.ecg-feedback{color:#42627c}
-.ecg-wave-link span,.ecg-axis-stop-info p{color:#42627c}
-.ecg-wave-link strong,.ecg-axis-stop-info strong{color:#9a5c19}
-.ecg-stage-count{color:#47799c}
-.ecg-stage-dots button{background:#8aaec5}
-.ecg-stage-dots button.active{background:#bd7933;box-shadow:0 0 0 4px #bd793326}
-.ecg-stage-controls button,.ecg-axis-play-toggle{
-  background:#eaf5fc;color:#204b6a;border-color:#89abc3;
+.ecg-tabs{border-bottom-color:#2d4863}
+.ecg-tabs button{color:#a9bdcf}
+.ecg-tabs button.selected{background:#eaf3fb;color:#163858}
+.ecg-explain-grid article,.ecg-detail-list article{background:#193653;border-color:#2b4b68}
+.ecg-explain-grid h3,.ecg-detail-list b{color:#fff}
+.ecg-explain-grid p,.ecg-detail-list p{color:#b7c8d7}
+.ecg-wave-link{background:#193653;border-color:#3b5c77}
+.ecg-wave-link span{color:#a9c4d9}
+.ecg-wave-link strong{color:#ffcf82}
+.ecg-stage-panel h3,.ecg-axis-lab h3,.ecg-quiz h3{color:#fff}
+.ecg-stage-panel>p,.ecg-axis-lab p{color:#b2c6d8}
+.ecg-axis-slider{color:#dceaf5}
+.ecg-axis-slider strong{color:#ffcf82}
+.ecg-axis-stop-info{background:#173653;border-left-color:#ffcf82}
+.ecg-axis-stop-info strong{color:#ffdc9e}
+.ecg-axis-stop-info p{color:#c4d5e3}
+.ecg-axis-status{background:#193653;color:#b9d8ed}
+.ecg-stage-controls button,.ecg-axis-play-toggle{background:#eaf4fb;color:#163653;border-color:#55718a}
+.ecg-quiz-top,.ecg-feedback{color:#c2d1df}
+.ecg-quiz .ecg-options button{background:#1a3858;color:#dce8f2;border-color:#36536f}
+.ecg-quiz .ecg-options button.correct{background:#194c45;color:#fff}
+.ecg-quiz .ecg-options button.incorrect{background:#512e3a;color:#fff}
+.ecg-lead-grid article{background:#204a70;border-color:#3a6285}
+.ecg-lead-grid article span{color:#a9d0ed}
+.ecg-lead-grid h3{color:#fff}
+.ecg-lead-grid p,.ecg-placement-note{color:#c1d1df}
+.ecg-heart-stage{background-image:radial-gradient(ellipse at 50% 42%,#284968 0,transparent 58%)}
+.ecg-model-tag,.ecg-model-badge{color:#a8c7df;text-shadow:none}
+.ecg-model-stage-card{background:#0b1d32dc;border-color:#496984}
+.ecg-model-stage-card span{color:#9fc4e0}
+.ecg-model-stage-card p{color:#d1dfeb}
+.ecg-model-stage-card strong{color:#ffcf82}
+.ecg-model-tools{background:rgba(9,24,39,.72)}
+.ecg-model-tools button{color:#f1ead7;background:rgba(245,239,222,.07);border-color:rgba(229,219,190,.38)}
+
+/* Handwritten notebook treatment for written teaching points only */
+.ecg-page .ecg-fact-grid article,
+.ecg-page .ecg-lead-grid article,
+.ecg-page .ecg-measure-facts article,
+.ecg-page .ecg-checklist li,
+.ecg-page .ecg-note{
   font-family:'Kalam','Comic Sans MS',cursive;
-}
-.ecg-axis-slider{color:#345b77}
-.ecg-axis-slider strong{color:#9a5c19}
-.ecg-quiz .ecg-options button{
-  background:rgba(239,247,252,.92);color:#284c67;border-color:#a7c0d1;
-  font-family:'Kalam','Comic Sans MS',cursive;
-}
-.ecg-quiz .ecg-options button.correct{background:#d7eee3;color:#245a45}
-.ecg-quiz .ecg-options button.incorrect{background:#f6dddd;color:#7a3434}
-.ecg-quiz-feedback,.ecg-feedback{border-color:#b3c9d8}
-.ecg-lead-grid article{background:rgba(248,252,255,.82);border-color:#a6c2d5}
-.ecg-lead-grid article span,.ecg-lead-grid h3{color:#244d6a}
-.ecg-lead-grid p{color:#496b83}
-.ecg-placement-note{color:#496b83}
-.ecg-heart-stage{background-image:radial-gradient(ellipse at 50% 42%,#c2dce9 0,transparent 62%)}
-.ecg-model-tag,.ecg-model-badge{color:#315c79;text-shadow:none}
-.ecg-model-stage-card{background:rgba(237,247,252,.94);border-color:#9bbbd0}
-.ecg-model-stage-card span,.ecg-model-stage-card p{color:#42627c}
-.ecg-model-stage-card strong{color:#9a5c19}
-.ecg-model-tools{background:rgba(197,222,238,.5)}
-.ecg-model-tools button{color:#254c68;background:rgba(248,252,255,.8);border-color:#9bbbd0}
-.ecg-heart-3d-legend span{color:#315c79}
-@media(max-width:760px){
- .ecg-blue-section,.ecg-dark-section,.ecg-quiz-section,.ecg-conduction-section{
+  background-color:#f8fbff;
   background-image:
-   linear-gradient(90deg,transparent 0,transparent 22px,rgba(193,83,91,.32) 22px,rgba(193,83,91,.32) 24px,transparent 24px),
-   repeating-linear-gradient(to bottom,transparent 0,transparent 28px,rgba(66,130,177,.24) 28px,rgba(66,130,177,.24) 29px);
- }
+    linear-gradient(90deg,transparent 0,transparent 17px,rgba(198,86,94,.22) 17px,rgba(198,86,94,.22) 18px,transparent 18px),
+    repeating-linear-gradient(to bottom,transparent 0,transparent 25px,rgba(81,143,187,.2) 25px,rgba(81,143,187,.2) 26px);
+  background-size:auto;
+  border:1px solid #c6d7e3;
+  border-radius:3px;
+  box-shadow:2px 3px 0 rgba(53,91,119,.1);
+  color:#294762;
+  padding-left:25px;
+}
+.ecg-page .ecg-fact-grid article b,
+.ecg-page .ecg-lead-grid article h3,
+.ecg-page .ecg-measure-facts article strong{
+  font-family:'Patrick Hand','Comic Sans MS',cursive;
+  color:#244b6a;
+}
+.ecg-page .ecg-fact-grid article p,
+.ecg-page .ecg-lead-grid article p,
+.ecg-page .ecg-measure-facts article span{color:#45657d}
+.ecg-page .ecg-note{background-color:#fff9df;border-left:3px solid #c58d43;color:#65583f}
+.ecg-page .ecg-checklist li{display:flex;align-items:center}
+@media(max-width:760px){
+ .ecg-page .ecg-fact-grid article,
+ .ecg-page .ecg-lead-grid article,
+ .ecg-page .ecg-measure-facts article,
+ .ecg-page .ecg-checklist li,
+ .ecg-page .ecg-note{background-size:auto}
 }
