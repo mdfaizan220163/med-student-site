@@ -30,7 +30,7 @@ export async function askProvider(p:Provider,m:Message[],system:string,maxTokens
  const d=await r.json();if(!r.ok)throw Error(d?.error?.message||"OpenAI failed");return d?.choices?.[0]?.message?.content?.trim()||"";
 }
 export async function generateWithFallback(m:Message[],system:string,preferred="auto",maxTokens=1800):Promise<{answer:string;provider:Provider}>{
- const available=availableProviders();const order:Provider[]=preferred==="auto"?["deepseek","gemini","groq","claude","openai"]:[preferred as Provider,...(["deepseek","gemini","groq","claude","openai"] as Provider[]).filter(x=>x!==preferred)];
+ const available=availableProviders();const order:Provider[]=preferred==="auto"?["gemini","groq","deepseek","claude","openai"]:[preferred as Provider,...(["deepseek","gemini","groq","claude","openai"] as Provider[]).filter(x=>x!==preferred)];
  const candidates=order.filter(x=>available.includes(x));if(!candidates.length)throw Error("No AI provider API key is configured in Vercel.");
  let last="AI provider request failed.";for(const p of candidates){try{const answer=await askProvider(p,m,system,maxTokens);if(answer)return{answer,provider:p};last=providerNames[p]+" returned an empty response.";}catch(e){last=e instanceof Error?e.message:last;console.error(providerNames[p],last);}}throw Error(last);
 }
