@@ -23,3 +23,11 @@ body{background-color:#e8edf1;background-image:url('/images/faizan-rainy-stethos
 .hero-socials a:hover{transform:translateY(-3px);border-color:#9bbbd6;color:#2f6798;background:#fff}
 .hero-socials svg{width:19px;height:19px;display:block}
 @media(max-width:640px){.hero-heading-row{align-items:flex-start;gap:0}.hero-heading-row h1{margin-bottom:14px}.hero-socials{width:100%;padding:0 0 12px;gap:9px}}
+
+/* Official brand colours for homepage social icons. */
+.hero-socials a{border:0;color:#fff;background:transparent}
+.hero-socials .social-instagram{background:radial-gradient(circle at 30% 107%,#fdf497 0%,#fdf497 5%,#fd5949 45%,#d6249f 60%,#285aeb 90%)}
+.hero-socials .social-linkedin{background:#0a66c2}
+.hero-socials .social-youtube{background:#ff0033}
+.hero-socials a:hover{filter:brightness(.92);color:#fff;border:0}
+.hero-socials svg{width:21px;height:21px}
