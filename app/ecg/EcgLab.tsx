@@ -1,6 +1,6 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 const questions = [
   { q: "Which ECG wave represents atrial depolarization?", options: ["P wave", "QRS complex", "T wave"], answer: 0, explain: "The P wave represents electrical activation (depolarization) of the atria." },
@@ -20,11 +20,60 @@ function Waveform({ paused }: { paused: boolean }) {
   </div>;
 }
 
+
+const conductionStages = [
+  { title: "SA node fires", wave: "P wave begins", detail: "The impulse starts in the sinoatrial node and spreads through both atria.", region: "SA node" },
+  { title: "Atrial depolarization", wave: "P wave", detail: "Atrial myocardium depolarizes as the impulse travels toward the AV node.", region: "Atria" },
+  { title: "AV nodal delay", wave: "PR segment", detail: "Conduction slows physiologically through the AV node before entering the His–Purkinje system.", region: "AV node" },
+  { title: "Ventricular depolarization", wave: "QRS complex", detail: "The His bundle, bundle branches and Purkinje network rapidly activate the ventricles.", region: "Ventricles" },
+  { title: "Ventricular repolarization", wave: "T wave", detail: "Ventricular cells recover electrically; this is represented by the T wave.", region: "Ventricles" },
+];
+
+function HeartConductionVisual({ stage }: { stage: number }) {
+  return <svg className={`ecg-heart-svg stage-${stage}`} viewBox="0 0 440 360" role="img" aria-label="Schematic four-chamber heart and cardiac conduction pathway">
+    <defs>
+      <linearGradient id="heartShell" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#f78d91"/><stop offset=".52" stopColor="#b83f58"/><stop offset="1" stopColor="#6e203c"/></linearGradient>
+      <linearGradient id="oxygenated" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#ff7774"/><stop offset="1" stopColor="#a92748"/></linearGradient>
+      <linearGradient id="deoxygenated" x1="0" y1="0" x2="1" y2="1"><stop stopColor="#65c6ef"/><stop offset="1" stopColor="#245b9b"/></linearGradient>
+      <filter id="heartShadow" x="-30%" y="-30%" width="160%" height="160%"><feGaussianBlur stdDeviation="8"/></filter>
+    </defs>
+    <ellipse cx="220" cy="318" rx="118" ry="17" fill="#050e1c" opacity=".32" filter="url(#heartShadow)"/>
+    <path d="M130 88 C88 54 67 82 82 137 L112 213 C127 260 170 300 220 325 C274 294 312 255 330 209 L357 130 C375 73 332 49 294 86 C260 49 229 56 220 94 C199 55 158 55 130 88Z" fill="url(#heartShell)" stroke="#f7a0a5" strokeWidth="3"/>
+    <path d="M119 116 C92 94 89 132 111 184 L144 239 C160 260 183 274 211 287 L211 166 C184 132 150 118 119 116Z" fill="url(#deoxygenated)" stroke="#9edcf7" strokeWidth="2"/>
+    <path d="M230 165 L230 288 C270 269 297 241 312 203 L338 133 C348 99 325 91 297 115 C272 117 247 137 230 165Z" fill="url(#oxygenated)" stroke="#ffc0b8" strokeWidth="2"/>
+    <path d="M126 105 C144 87 183 91 211 125 L211 157 C181 132 150 123 126 132Z" fill="#347eae" stroke="#a8e5fb" strokeWidth="2"/>
+    <path d="M230 125 C258 91 291 89 316 106 L299 137 C274 127 251 139 230 157Z" fill="#e75e65" stroke="#ffc3bd" strokeWidth="2"/>
+    <path d="M166 42 C164 8 178 4 188 32 L194 94" fill="none" stroke="#398cc4" strokeWidth="15" strokeLinecap="round"/>
+    <path d="M278 43 C280 8 296 7 302 37 L294 100" fill="none" stroke="#d94d5c" strokeWidth="14" strokeLinecap="round"/>
+    <path d="M166 40 L166 93 M278 42 L278 92" stroke="#e9f4ff" strokeWidth="3" opacity=".7"/>
+    <path d="M220 106 L220 279" stroke="#f9d6a2" strokeWidth="4" strokeDasharray="5 6" opacity=".9"/>
+    <path className="ecg-conduction-path" d="M166 104 Q190 116 218 143 L220 175 Q197 203 178 239 M220 175 Q246 202 267 241" fill="none" stroke="#ffe78a" strokeWidth="4" strokeLinecap="round" strokeDasharray="7 7"/>
+    <circle className="ecg-impulse" cx={stage===0?166:stage===1?190:stage===2?220:stage===3?260:220} cy={stage===0?104:stage===1?125:stage===2?160:stage===3?230:270} r="9" fill="#fff2a8" stroke="#fff" strokeWidth="3"/>
+    <g className="ecg-heart-labels"><text x="90" y="178">RA</text><text x="155" y="258">RV</text><text x="278" y="178">LA</text><text x="255" y="258">LV</text></g>
+    <g className="ecg-heart-small"><text x="114" y="72">SVC</text><text x="310" y="69">Aorta</text><text x="220" y="345" textAnchor="middle">Schematic anatomy · not to scale</text></g>
+  </svg>;
+}
+
+function AxisVisual({ angle }: { angle: number }) {
+  const radians = angle * Math.PI / 180;
+  const lead = (deg: number) => ({ x: 180 + 122 * Math.cos(deg * Math.PI / 180), y: 145 - 122 * Math.sin(deg * Math.PI / 180) });
+  const end = { x: 180 + 108 * Math.cos(radians), y: 145 - 108 * Math.sin(radians) };
+  const leads = [{name:"I",deg:0},{name:"II",deg:60},{name:"III",deg:120},{name:"aVL",deg:-30},{name:"aVF",deg:90},{name:"aVR",deg: -150}];
+  return <svg className="ecg-axis-svg" viewBox="0 0 360 290" role="img" aria-label={`Hexaxial reference system with mean QRS axis ${angle} degrees`}>
+    <circle cx="180" cy="145" r="112" fill="#102b46" stroke="#49647e" strokeDasharray="3 5"/>
+    {leads.map(l=>{const p=lead(l.deg);return <g key={l.name}><line x1="180" y1="145" x2={p.x} y2={p.y} stroke="#7290a9" strokeWidth="1.5"/><text x={p.x+(p.x-180)*.12} y={p.y+(p.y-145)*.12} fill="#c3d6e6" fontSize="10" textAnchor="middle">{l.name}</text></g>;})}
+    <line x1="180" y1="145" x2={end.x} y2={end.y} stroke="#ffcb75" strokeWidth="5" strokeLinecap="round"/>
+    <path d={`M ${end.x-9*Math.sin(radians)} ${end.y-9*Math.cos(radians)} L ${end.x} ${end.y} L ${end.x+9*Math.sin(radians)} ${end.y+9*Math.cos(radians)}`} fill="none" stroke="#ffcb75" strokeWidth="4" strokeLinecap="round"/>
+    <circle cx="180" cy="145" r="5" fill="#fff"/>
+    <text x="180" y="278" textAnchor="middle" fill="#fff" fontSize="13" fontWeight="700">Mean QRS axis: {angle}°</text>
+  </svg>;
+}
+
 export default function EcgLab() {
   const [paused, setPaused] = useState(false);
   const [active, setActive] = useState("waves");
   const [answer, setAnswer] = useState<number | null>(null);
-  const [question, setQuestion] = useState(0);
+  const [question, setQuestion] = useState(0);\n  const [conductionStep, setConductionStep] = useState(0);\n  const [axisAngle, setAxisAngle] = useState(60);\n  const [simulationRunning, setSimulationRunning] = useState(true);\n  useEffect(() => { if (!simulationRunning) return; const timer = window.setInterval(() => setConductionStep(step => (step + 1) % conductionStages.length), 1800); return () => window.clearInterval(timer); }, [simulationRunning]);\n  const axisLabel = axisAngle >= -30 && axisAngle <= 90 ? "Within commonly used normal range" : axisAngle < -30 ? "Left axis deviation range" : "Right axis deviation range";
   const current = questions[question];
 
   return <main className="ecg-page">
@@ -39,6 +88,27 @@ export default function EcgLab() {
           <div className="ecg-hero-card"><div className="ecg-live-label"><i /> ECG SIGNAL · EDUCATIONAL SIMULATION</div><Waveform paused={paused} /><div className="ecg-controls"><button onClick={() => setPaused(v => !v)}>{paused ? "▶ Resume waveform" : "Ⅱ Pause waveform"}</button><span>{paused ? "Paused" : "Simulated signal running"}</span></div></div>
         </div>
         <div className="ecg-disclaimer">Learning simulation only — not a medical device and not suitable for diagnosing a real ECG.</div>
+      </div>
+    </section>
+
+
+    <section className="ecg-conduction-section">
+      <div className="ecg-container ecg-section">
+        <div className="ecg-section-heading light"><div><p className="ecg-overline">LIVE MODEL / 01</p><h2>Follow the electrical impulse.</h2></div><p>A synchronized teaching schematic links the conduction sequence to the ECG event. Blood flow and electrical conduction are separate processes.</p></div>
+        <div className="ecg-live-lab">
+          <div className="ecg-heart-stage"><div className="ecg-model-tag">FOUR CHAMBERS · CONDUCTION PATHWAY</div><HeartConductionVisual stage={conductionStep}/></div>
+          <div className="ecg-stage-panel">
+            <div className="ecg-stage-count">STEP {conductionStep+1} / {conductionStages.length}</div>
+            <h3>{conductionStages[conductionStep].title}</h3><p>{conductionStages[conductionStep].detail}</p>
+            <div className="ecg-wave-link"><span>ECG CORRELATION</span><strong>{conductionStages[conductionStep].wave}</strong></div>
+            <div className="ecg-stage-dots">{conductionStages.map((s,i)=><button key={s.title} aria-label={s.title} className={i===conductionStep?"active":""} onClick={()=>setConductionStep(i)} />)}</div>
+            <div className="ecg-stage-controls"><button onClick={()=>setSimulationRunning(v=>!v)}>{simulationRunning?"Pause":"Play"} sequence</button><button onClick={()=>setConductionStep(v=>(v+1)%conductionStages.length)}>Next step →</button></div>
+          </div>
+        </div>
+        <div className="ecg-axis-lab">
+          <div><p className="ecg-overline">LIVE MODEL / 02</p><h3>Rotate the mean QRS axis.</h3><p>Move the angle to explore the frontal-plane hexaxial reference system. This is a teaching model; real axis interpretation uses measured limb-lead QRS deflections.</p><label className="ecg-axis-slider">Axis angle <strong>{axisAngle}°</strong><input type="range" min="-180" max="180" step="5" value={axisAngle} onChange={e=>setAxisAngle(Number(e.target.value))}/><span><small>−180°</small><small>0°</small><small>+180°</small></span></label><div className="ecg-axis-status">{axisLabel}</div></div>
+          <div className="ecg-axis-visual-wrap"><AxisVisual angle={axisAngle}/></div>
+        </div>
       </div>
     </section>
 
