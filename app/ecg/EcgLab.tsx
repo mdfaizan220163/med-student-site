@@ -8,13 +8,13 @@ const questions = [
   { q: "At standard paper speed, one small horizontal square equals:", options: ["0.20 seconds", "0.10 seconds", "0.04 seconds"], answer: 2, explain: "At 25 mm/s, a 1 mm small square represents 0.04 seconds." },
 ];
 
-function Waveform({ paused }: { paused: boolean }) {
+function Waveform({ paused, stage = 0 }: { paused: boolean; stage?: number }) {
   return <div className={`ecg-paper ${paused ? "is-paused" : ""}`}>
     <svg viewBox="0 0 900 210" role="img" aria-label="Illustrative normal ECG waveform with P wave, QRS complex and T wave">
       <path className="ecg-trace-shadow" d="M0 125 L90 125 Q110 125 120 111 Q132 95 145 125 L210 125 L235 130 L250 125 L270 125 L284 145 L300 24 L317 166 L334 125 L390 125 Q420 125 438 96 Q466 62 492 125 L620 125 Q700 125 730 125 L900 125" />
       <path className="ecg-trace" pathLength="1000" d="M0 125 L90 125 Q110 125 120 111 Q132 95 145 125 L210 125 L235 130 L250 125 L270 125 L284 145 L300 24 L317 166 L334 125 L390 125 Q420 125 438 96 Q466 62 492 125 L620 125 Q700 125 730 125 L900 125" />
       <g className="ecg-labels"><text x="125" y="82">P</text><text x="300" y="18">QRS</text><text x="465" y="51">T</text></g>
-      <g className="ecg-guides"><path d="M132 88 V104 M300 22 V36 M466 55 V75" /></g>
+      <g className="ecg-guides"><path d="M132 88 V104 M300 22 V36 M466 55 V75" /></g>\n      <circle className="ecg-stage-marker" cx={[120,145,250,300,466][stage]} cy={[111,125,125,24,96][stage]} r="8" />
     </svg>
     <div className="ecg-paper-caption"><span>Illustrative normal sinus beat</span><span>25 mm/s · 10 mm/mV</span></div>
   </div>;
@@ -171,7 +171,7 @@ export default function EcgLab() {
             <p className="ecg-intro">A visual introduction to electrocardiography. Explore how the heart’s electrical activity becomes the waves and intervals we interpret on an ECG.</p>
             <a className="ecg-primary-link" href="#ecg-explorer">Explore the ECG <span>↓</span></a>
           </div>
-          <div className="ecg-hero-card"><div className="ecg-live-label"><i /> ECG SIGNAL · EDUCATIONAL SIMULATION</div><Waveform paused={paused} /><div className="ecg-controls"><button onClick={() => setPaused(v => !v)}>{paused ? "▶ Resume waveform" : "Ⅱ Pause waveform"}</button><span>{paused ? "Paused" : "Simulated signal running"}</span></div></div>
+          <div className="ecg-hero-card"><div className="ecg-live-label"><i /> ECG SIGNAL · EDUCATIONAL SIMULATION</div><Waveform paused={paused} stage={conductionStep} /><div className="ecg-controls"><button onClick={() => setPaused(v => !v)}>{paused ? "▶ Resume waveform" : "Ⅱ Pause waveform"}</button><span>{paused ? "Paused" : "Simulated signal running"}</span></div></div>
         </div>
         <div className="ecg-disclaimer">Learning simulation only — not a medical device and not suitable for diagnosing a real ECG.</div>
       </div>
@@ -214,7 +214,7 @@ export default function EcgLab() {
           {[["waves","P · QRS · T"],["intervals","Intervals"],["segments","Segments"]].map(([id,label]) => <button key={id} className={active === id ? "selected" : ""} onClick={() => setActive(id)} role="tab" aria-selected={active === id}>{label}</button>)}
         </div>
         <div className="ecg-explorer-body">
-          <div className="ecg-mini-strip"><Waveform paused={paused} /></div>
+          <div className="ecg-mini-strip"><Waveform paused={paused} stage={conductionStep} /></div>
           {active === "waves" && <div className="ecg-explain-grid">
             <article><span className="ecg-wave-letter">P</span><div><h3>P wave</h3><p>Atrial depolarization — electrical activation spreads through the atria.</p></div></article>
             <article><span className="ecg-wave-letter">QRS</span><div><h3>QRS complex</h3><p>Ventricular depolarization. Atrial repolarization occurs at about the same time and is usually obscured.</p></div></article>
